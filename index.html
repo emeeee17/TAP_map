@@ -2,17 +2,14 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <!-- ล็อกไม่ให้หน้าเว็บเบราว์เซอร์ซูมขยายผิดสเกลในมือถือ -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TAP - Store Locator</title>
-    <!-- โหลด Font Prompt -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <!-- โหลด D3.js -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
 
     <style>
         :root {
-            --brand-color: #ffcc00; /* สีเหลือง TAP */
+            --brand-color: #ffcc00;
             --brand-hover: #e6b800; 
             --map-bg: #f8fafc;
             --text-dark: #1e293b;
@@ -34,7 +31,6 @@
             color: var(--text-dark);
         }
 
-        /* Header Navbar */
         .header {
             position: absolute;
             top: 0;
@@ -67,7 +63,6 @@
             border-radius: 6px;
         }
 
-        /* Search Box */
         .search-container {
             position: absolute;
             top: 68px;
@@ -105,12 +100,11 @@
             flex-shrink: 0;
         }
 
-        /* ปุ่มย้อนกลับ */
         #back-btn {
             position: absolute;
             top: 68px;
             left: 16px;
-            z-index: 30; /* ให้อยู่เหนือชั้นทุกอย่าง */
+            z-index: 30;
             background-color: white;
             color: var(--text-dark);
             border: 2px solid var(--brand-color);
@@ -129,7 +123,6 @@
             transform: scale(0.95);
         }
 
-        /* Map Container */
         #map-container {
             width: 100vw;
             height: 100vh;
@@ -139,7 +132,6 @@
             cursor: grabbing;
         }
 
-        /* SVG จังหวัด */
         .province {
             fill: var(--brand-color);
             stroke: #ffffff;
@@ -168,15 +160,14 @@
             text-shadow: 0px 0px 3px rgba(255, 255, 255, 0.9);
         }
 
-        /* Sidebar Desktop & Bottom Sheet Mobile (โปร่งแสง ละมุนตา) */
         #sidebar {
             position: absolute;
             top: 56px;
             right: 0;
             width: 360px;
             height: calc(100vh - 56px);
-            background: rgba(255, 255, 255, 0.88); /* โปร่งแสง */
-            backdrop-filter: blur(12px); /* กระจกฝ้า */
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             box-shadow: -4px 0 25px rgba(0,0,0,0.08);
             z-index: 25;
@@ -191,7 +182,6 @@
             transform: translateX(0);
         }
 
-        /* แถบดึงสไตล์ Mobile */
         .sheet-handle {
             display: none;
             width: 36px;
@@ -224,7 +214,6 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.02);
         }
 
-        /* Responsive สำหรับมือถือ (จอแคบกว่า 768px) */
         @media (max-width: 768px) {
             #sidebar {
                 top: auto;
@@ -232,10 +221,10 @@
                 left: 0;
                 right: 0;
                 width: 100%;
-                height: 52vh; /* กินพื้นที่ครึ่งล่าง */
+                height: 50vh;
                 border-radius: 20px 20px 0 0;
                 box-shadow: 0 -6px 25px rgba(0,0,0,0.12);
-                transform: translateY(100%); /* สไลด์ขึ้นมาจากด้านล่าง */
+                transform: translateY(100%);
                 padding: 16px 20px 20px 20px;
                 border-top: 1px solid rgba(255, 255, 255, 0.8);
             }
@@ -245,7 +234,7 @@
             }
 
             .sheet-handle {
-                display: block; /* แสดงแถบจับลากบนมือถือ */
+                display: block;
             }
 
             body.zoomed .search-container {
@@ -257,15 +246,12 @@
 </head>
 <body>
 
-    <!-- Header -->
     <div class="header">
         <h1 class="header-logo"><span>TAP</span> Store Locator</h1>
     </div>
 
-    <!-- ปุ่มย้อนกลับ -->
     <button id="back-btn">← ย้อนกลับ</button>
 
-    <!-- ช่องค้นหา -->
     <div class="search-container">
         <svg class="search-icon" viewBox="0 0 24 24">
             <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
@@ -274,7 +260,6 @@
         <datalist id="province-list"></datalist>
     </div>
 
-    <!-- Sidebar / Bottom Sheet -->
     <div id="sidebar">
         <div class="sheet-handle"></div>
         <h2 class="prov-title" id="sidebar-title">ชื่อจังหวัด</h2>
@@ -282,7 +267,6 @@
         <div class="store-card-placeholder">📦 พื้นที่จำลอง: สาขาในพื้นที่</div>
     </div>
 
-    <!-- แผนที่ -->
     <div id="map-container">
         <svg id="thailand-map"></svg>
     </div>
@@ -340,6 +324,7 @@
         const projection = d3.geoMercator();
         const path = d3.geoPath().projection(projection);
 
+        // แก้ไขจุดบัค props[key] -> props[k] เรียบร้อย
         function getProvName(d) {
             if (!d || !d.properties) return "";
             let props = d.properties;
@@ -353,7 +338,7 @@
             }
 
             for (let k in props) {
-                if (typeof props[key] === 'string' && /[\u0E00-\u0E7F]/.test(props[k])) {
+                if (typeof props[k] === 'string' && /[\u0E00-\u0E7F]/.test(props[k])) {
                     if (props[k].includes("กรุงเทพ")) return "กรุงเทพมหานคร";
                     return props[k].trim();
                 }
@@ -401,7 +386,6 @@
             });
         });
 
-        // 🎯 ฟังก์ชันคำนวณซูมแบบแยกจอ Desktop vs Mobile
         function zoomToFeature(d) {
             const name = getProvName(d);
             const [[x0, y0], [x1, y1]] = path.bounds(d);
@@ -419,13 +403,11 @@
             let targetY = targetHeight / 2;
 
             if (!isMobile) {
-                // Desktop: เว้นพื้นที่ด้านขวาให้ Sidebar (360px)
                 targetWidth = window.innerWidth - 360;
                 targetX = targetWidth / 2;
             } else {
-                // Mobile: โฟกัสจังหวัดให้อยู่ครึ่งบนของหน้าจอ (เหนือ Bottom Sheet)
-                targetHeight = window.innerHeight * 0.48;
-                targetY = targetHeight / 2 + 30; // ปรับชดเชย Header
+                targetHeight = window.innerHeight * 0.5;
+                targetY = targetHeight / 2 + 20;
             }
 
             let scale = 0.65 / Math.max(dx / targetWidth, dy / targetHeight);
@@ -478,7 +460,6 @@
             }
         });
 
-        // 🔄 ปุ่มย้อนกลับ: รีเซ็ตสเกลซูมกลับมา 100% ดั้งเดิมเป๊ะๆ
         document.getElementById("back-btn").addEventListener("click", () => {
             svg.transition()
                 .duration(750)
