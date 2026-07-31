@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แผนที่สาขา - ประเทศไทย</title>
+    <!-- โหลด D3.js และ TopoJSON -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/topojson-client@3"></script>
+    <!-- โหลดฟอนต์ Kanit -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- โหลด CSS แยก -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="map-container">
+        <div class="tooltip" id="tooltip"></div>
+        <button id="reset-btn" onclick="resetZoom()">🔄 กลับมุมมองเดิม</button>
+    </div>
+
+    <!-- โหลด JS แยก -->
+    <script src="script.js"></script>
+</body>
+</html>
