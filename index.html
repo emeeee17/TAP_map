@@ -201,17 +201,97 @@
             padding-bottom: 8px;
         }
 
+        /* ----- สไตล์ใหม่สำหรับร้านค้า ----- */
+        .store-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--brand-color);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .store-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+
+        .store-district {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 12px;
+        }
+
+        .store-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 4px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Prompt', sans-serif;
+            text-align: center;
+        }
+
+        .btn-call {
+            background: #eff6ff;
+            color: #3b82f6;
+            border: 1px solid #bfdbfe;
+        }
+
+        .btn-call:hover {
+            background: #dbeafe;
+        }
+
+        .btn-call.disabled {
+            background: #f1f5f9;
+            color: #94a3b8;
+            border-color: #e2e8f0;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .btn-map {
+            background: #f0fdf4;
+            color: #22c55e;
+            border: 1px solid #bbf7d0;
+        }
+
+        .btn-map:hover {
+            background: #dcfce7;
+        }
+
+        .btn svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
         .store-card-placeholder {
             background: rgba(255, 255, 255, 0.9);
             border: 1px solid #e2e8f0;
             border-radius: 10px;
             padding: 16px;
-            margin-bottom: 12px;
             color: #64748b;
             font-size: 14px;
             text-align: center;
             border-left: 4px solid var(--brand-color);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
         }
 
         @media (max-width: 768px) {
@@ -263,15 +343,27 @@
     <div id="sidebar">
         <div class="sheet-handle"></div>
         <h2 class="prov-title" id="sidebar-title">ชื่อจังหวัด</h2>
-        <div class="store-card-placeholder">📦 พื้นที่จำลอง: เดี๋ยวเอากล่องรายชื่อร้านมาใส่ตรงนี้</div>
-        <div class="store-card-placeholder">📦 พื้นที่จำลอง: สาขาในพื้นที่</div>
+        
+        <!-- พื้นที่สำหรับใส่รายชื่อร้านค้า -->
+        <div id="store-list-container">
+            <div class="store-card-placeholder">📦 เลือกพื้นที่บนแผนที่เพื่อดูสาขา</div>
+        </div>
     </div>
 
     <div id="map-container">
         <svg id="thailand-map"></svg>
     </div>
 
+    <!-- โหลดข้อมูลร้านค้าจากไฟล์ที่เราแปลงไว้ -->
+    <script src="stores.js"></script>
+
     <script>
+        // กำหนดข้อมูลหากไฟล์ stores.js โหลดไม่สำเร็จหรือไม่พบไฟล์
+        if (typeof storeData === 'undefined') {
+            window.storeData = [];
+            console.warn("ไม่พบข้อมูลร้านค้า! ตรวจสอบว่ามีไฟล์ stores.js อยู่ในระดับเดียวกับ index.html");
+        }
+
         const enToThMap = {
             "Bangkok Metropolis": "กรุงเทพมหานคร", "Bangkok": "กรุงเทพมหานคร",
             "Amnat Charoen": "อำนาจเจริญ", "Ang Thong": "อ่างทอง", "Buogkan": "บึงกาฬ",
@@ -324,7 +416,6 @@
         const projection = d3.geoMercator();
         const path = d3.geoPath().projection(projection);
 
-        // แก้ไขจุดบัค props[key] -> props[k] เรียบร้อย
         function getProvName(d) {
             if (!d || !d.properties) return "";
             let props = d.properties;
@@ -349,6 +440,69 @@
             if (enToThMap[rawEng]) return enToThMap[rawEng];
 
             return rawEng;
+        }
+
+        // ฟังก์ชันในการแสดงรายชื่อร้านค้า
+        function renderStores(provinceName) {
+            const container = document.getElementById("store-list-container");
+            container.innerHTML = ""; 
+
+            // ค้นหาร้านที่อยู่ในจังหวัดที่เลือก
+            const storesInProvince = window.storeData.filter(s => {
+                let prov = s['จังหวัด'] || "";
+                if (provinceName === "กรุงเทพมหานคร" && prov.includes("กรุงเทพ")) return true;
+                return prov.trim() === provinceName;
+            });
+
+            // จัดเรียงตามเขต/อำเภอ
+            storesInProvince.sort((a, b) => {
+                let distA = a['อำเภอ/เขต'] || "";
+                let distB = b['อำเภอ/เขต'] || "";
+                return distA.localeCompare(distB, 'th');
+            });
+
+            if (storesInProvince.length === 0) {
+                container.innerHTML = `<div class="store-card-placeholder">ไม่พบข้อมูลร้านค้าในเขต ${provinceName}</div>`;
+                return;
+            }
+
+            storesInProvince.forEach(store => {
+                const storeName = store['ชื่อร้านค้า'] || "ไม่ระบุชื่อร้าน";
+                const district = store['อำเภอ/เขต'] || "-";
+                let phone = store['เบอร์โทรศัพท์'] || "";
+                phone = String(phone).trim();
+                const mapLink = store['ลิงก์ Google Maps'] || "#";
+
+                // เช็คว่ามีเบอร์หรือไม่ (ดักค่าว่าง หรือขีด หรือ none)
+                const hasPhone = phone && phone !== "-" && phone.toLowerCase() !== "none" && phone.toLowerCase() !== "nan" && phone.length > 2;
+                // ตัดตัวอักษรที่ไม่ใช่ตัวเลขออกสำหรับการสั่งโทรศัพท์
+                const telLink = hasPhone ? phone.replace(/[^0-9]/g, '') : "";
+
+                const callButtonHtml = hasPhone 
+                    ? `<a href="tel:${telLink}" class="btn btn-call">
+                        <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.03 21c.76 0 .98-.66.98-1.21v-3.42c0-.54-.45-.99-.99-.99z"/></svg>
+                        ${phone}
+                       </a>`
+                    : `<div class="btn btn-call disabled" title="ไม่มีเบอร์โทรศัพท์">
+                        <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.03 21c.76 0 .98-.66.98-1.21v-3.42c0-.54-.45-.99-.99-.99z"/></svg>
+                        ไม่มีเบอร์
+                       </div>`;
+
+                const card = document.createElement("div");
+                card.className = "store-card";
+                card.innerHTML = `
+                    <div class="store-name">${storeName}</div>
+                    <div class="store-district">📍 เขต/อำเภอ: ${district}</div>
+                    <div class="store-actions">
+                        ${callButtonHtml}
+                        <a href="${mapLink}" target="_blank" class="btn btn-map">
+                            <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                            Google Map
+                        </a>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
         }
 
         d3.json("https://raw.githubusercontent.com/cvibhagool/thailand-map/master/thailand-provinces.geojson").then(data => {
@@ -428,7 +582,10 @@
                 .filter(p => getProvName(p) === name)
                 .classed("active", true);
 
+            // เซ็ตชื่อ และวาดรายชื่อร้านค้า
             document.getElementById("sidebar-title").innerText = name;
+            renderStores(name);
+
             document.getElementById("search-input").value = name;
             document.getElementById("sidebar").classList.add("open");
             document.getElementById("back-btn").style.display = "block";
