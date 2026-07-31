@@ -4,16 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TAP - Store Locator</title>
-    <!-- โหลด Font จาก Google -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <!-- โหลด D3.js สำหรับสร้างแผนที่ Interactive -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
 
     <style>
         :root {
-            --brand-color: #f97316; /* สีส้ม TAP */
-            --brand-hover: #ea580c;
+            --brand-color: #f59e0b; /* สีเหลืองอมส้ม (Amber) */
+            --brand-hover: #d97706; /* สีเหลืองอมส้มเข้มขึ้นตอน Hover */
             --map-bg: #f8fafc;
+            --text-main: #334155;
         }
 
         body, html {
@@ -23,10 +22,11 @@
             height: 100%;
             background-color: var(--map-bg);
             font-family: 'Prompt', sans-serif;
-            overflow: hidden; /* ป้องกันการเลื่อนหน้าจอปกติ เพราะเราจะใช้แผนที่เลื่อนแทน */
+            overflow: hidden;
+            color: var(--text-main);
         }
 
-        /* ส่วนหัวของเว็บ (TAP Header) */
+        /* Header */
         .header {
             position: absolute;
             top: 0;
@@ -48,7 +48,65 @@
             margin: 0;
         }
 
-        /* คอนเทนเนอร์แผนที่ */
+        /* Search Box (ตรงกลางบน) */
+        .search-container {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            background: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 400px;
+            transition: all 0.3s;
+        }
+
+        .search-container input {
+            border: none;
+            outline: none;
+            font-family: 'Prompt', sans-serif;
+            font-size: 16px;
+            width: 100%;
+            margin-left: 10px;
+            background: transparent;
+        }
+
+        .search-icon {
+            width: 20px;
+            height: 20px;
+            fill: #94a3b8;
+        }
+
+        /* ปุ่มย้อนกลับ (Back Button) */
+        #back-btn {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            z-index: 20;
+            background-color: white;
+            color: var(--brand-color);
+            border: 2px solid var(--brand-color);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-family: 'Prompt', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            display: none; /* ซ่อนไว้ก่อน จะโชว์ตอนซูม */
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        #back-btn:hover {
+            background-color: var(--brand-color);
+            color: white;
+        }
+
+        /* Map Container */
         #map-container {
             width: 100vw;
             height: 100vh;
@@ -58,46 +116,125 @@
             cursor: grabbing;
         }
 
-        /* สไตล์ของจังหวัดแต่ละอัน */
+        /* สไตล์แผนที่ SVG */
         .province {
-            fill: #fb923c; /* สีส้มโทนสว่าง */
-            stroke: #ffffff; /* เส้นขอบสีขาว */
+            fill: var(--brand-color);
+            stroke: #ffffff;
             stroke-width: 0.8px;
-            transition: fill 0.2s ease-in-out;
+            transition: fill 0.2s ease;
             cursor: pointer;
         }
-
         .province:hover {
-            fill: var(--brand-hover); /* สีเข้มขึ้นเมื่อเอาเมาส์ชี้ */
+            fill: var(--brand-hover);
         }
-
-        /* สไตล์ชื่อจังหวัด */
+        .province.active {
+            fill: var(--brand-hover);
+            stroke-width: 1.5px;
+        }
+        
         .province-label {
             fill: #ffffff;
             font-size: 10px;
             font-weight: 500;
             text-anchor: middle;
-            pointer-events: none; /* ไม่ให้ตัวหนังสือขวางการคลิกแผนที่ */
+            pointer-events: none;
             user-select: none;
+            text-shadow: 0px 1px 2px rgba(0,0,0,0.3); /* ให้ตัวหนังสือลอยชัดขึ้น */
+        }
+
+        /* แผงด้านข้าง (Sidebar) แสดงรายชื่อร้าน */
+        #sidebar {
+            position: absolute;
+            top: 60px; /* ใต้ Header */
+            right: 0;
+            width: 100%;
+            max-width: 350px;
+            height: calc(100vh - 60px);
+            background: white;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.05);
+            z-index: 15;
+            transform: translateX(100%); /* ซ่อนไว้ด้านขวา */
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            padding: 24px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        #sidebar.open {
+            transform: translateX(0); /* สไลด์ออกมา */
+        }
+
+        .prov-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--brand-color);
+            margin-top: 0;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 10px;
+        }
+
+        .store-card-placeholder {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            color: #64748b;
+            font-size: 14px;
+            text-align: center;
+            border-left: 4px solid var(--brand-color);
+        }
+
+        /* ซ่อนแว่นขยายตอนโชว์ Sidebar ในมือถือ */
+        @media (max-width: 768px) {
+            #sidebar {
+                max-width: 100%; /* เต็มจอในมือถือ */
+            }
+            body.zoomed .search-container {
+                display: none; /* ซ่อนช่องค้นหาเพื่อไม่ให้เกะกะตอนดูร้าน */
+            }
         }
     </style>
 </head>
 <body>
 
-    <!-- Header แบรนด์ TAP -->
+    <!-- Header -->
     <div class="header">
         <h1 class="header-logo">TAP</h1>
     </div>
 
-    <!-- พื้นที่แสดงแผนที่ -->
+    <!-- ปุ่มย้อนกลับ -->
+    <button id="back-btn">← ย้อนกลับ</button>
+
+    <!-- ช่องค้นหา -->
+    <div class="search-container">
+        <!-- SVG แว่นขยาย -->
+        <svg class="search-icon" viewBox="0 0 24 24">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+        </svg>
+        <input type="text" id="search-input" list="province-list" placeholder="ค้นหาจังหวัด...">
+        <datalist id="province-list"></datalist>
+    </div>
+
+    <!-- Sidebar รายชื่อร้าน -->
+    <div id="sidebar">
+        <h2 class="prov-title" id="sidebar-title">ชื่อจังหวัด</h2>
+        <!-- รอใส่ข้อมูล JSON จริงในสเตปถัดไป -->
+        <div class="store-card-placeholder">📦 พื้นที่จำลอง: เดี๋ยวเอากล่องรายชื่อร้านมาใส่ตรงนี้</div>
+        <div class="store-card-placeholder">📦 พื้นที่จำลอง: ร้านสาขาที่ 2</div>
+        <div class="store-card-placeholder">📦 พื้นที่จำลอง: ร้านสาขาที่ 3</div>
+    </div>
+
+    <!-- แผนที่ -->
     <div id="map-container">
         <svg id="thailand-map"></svg>
     </div>
 
     <script>
-        // กำหนดขนาดตามหน้าจอ
         const width = window.innerWidth;
         const height = window.innerHeight;
+        let geoJsonData = null; // เก็บข้อมูลแผนที่ไว้ใช้กับช่องค้นหา
 
         const svg = d3.select("#thailand-map")
             .attr("width", width)
@@ -105,59 +242,114 @@
 
         const g = svg.append("g");
 
-        // 1. สร้างระบบ Zoom & Pan (เลื่อน/ซูมด้วยเมาส์หรือนิ้ว)
+        // ระบบ Zoom
         const zoom = d3.zoom()
-            .scaleExtent([1, 10]) // ซูมได้ตั้งแต่ 1x ถึง 10x
+            .scaleExtent([1, 15])
             .on("zoom", (event) => {
                 g.attr("transform", event.transform);
+                
+                // ปรับขนาดตัวหนังสือให้เล็กลงเมื่อซูมเข้า จะได้ไม่ล้นจอ
+                const scale = event.transform.k;
+                g.selectAll(".province-label").style("font-size", Math.max(3, 10 / scale) + "px");
             });
         
         svg.call(zoom);
 
-        // 2. ตั้งค่า Projection แผนที่ (พิกัดโลก -> พิกัดหน้าจอ)
         const projection = d3.geoMercator();
         const path = d3.geoPath().projection(projection);
 
-        // 3. โหลดข้อมูลพิกัดภูมิศาสตร์ (GeoJSON) ของประเทศไทย
-        // หมายเหตุ: ใช้ลิงก์สาธารณะสำหรับ GeoJSON ของไทย
-        const geojsonUrl = "https://raw.githubusercontent.com/cvibhagool/thailand-map/master/thailand-provinces.geojson";
-
-        d3.json(geojsonUrl).then(data => {
-            // ปรับขนาดแผนที่ให้พอดีกับหน้าจออัตโนมัติ
-            // (ปรับตำแหน่งลงมานิดหน่อยเพื่อหลบ Header ด้านบน)
+        // โหลดข้อมูลพิกัด
+        d3.json("https://raw.githubusercontent.com/cvibhagool/thailand-map/master/thailand-provinces.geojson").then(data => {
+            geoJsonData = data;
             projection.fitExtent([[20, 80], [width - 20, height - 20]], data);
 
-            // 4. วาดเส้นขอบจังหวัด
+            // วาดจังหวัด
             g.selectAll("path")
                 .data(data.features)
                 .enter().append("path")
                 .attr("class", "province")
                 .attr("d", path)
-                .attr("id", d => "prov-" + d.properties.PROV_CODE)
-                .on("click", function(event, d) {
-                    // เตรียมไว้สำหรับสเตปต่อไป (กดแล้วซูม)
-                    console.log("Clicked Province: " + d.properties.PROV_NAMT);
-                });
+                .on("click", handleProvinceClick);
 
-            // 5. ใส่ชื่อจังหวัดลงไปตรงกลางของแต่ละพื้นที่ (Centroid)
+            // ใส่ชื่อจังหวัด
             g.selectAll("text")
                 .data(data.features)
                 .enter().append("text")
                 .attr("class", "province-label")
                 .attr("transform", d => {
-                    // คำนวณหาจุดกึ่งกลางของแต่ละจังหวัด
                     const centroid = path.centroid(d);
-                    // บางจังหวัดที่รูปร่างแปลกๆ อาจทำให้ชื่อล้น เรากรองเอาแค่จุดที่มีค่า
                     return isNaN(centroid[0]) ? "translate(-100,-100)" : `translate(${centroid})`;
                 })
                 .attr("dy", ".35em")
-                .text(d => d.properties.PROV_NAMT); // ใช้ชื่อภาษาไทย
-        }).catch(error => {
-            console.error("Error loading the GeoJSON data: ", error);
-            alert("ไม่สามารถโหลดข้อมูลแผนที่ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต");
+                .text(d => d.properties.PROV_NAMT);
+
+            // นำชื่อจังหวัดใส่ใน Datalist เพื่อให้ Search Box มี Auto-complete
+            const datalist = document.getElementById("province-list");
+            data.features.forEach(f => {
+                let option = document.createElement('option');
+                option.value = f.properties.PROV_NAMT;
+                datalist.appendChild(option);
+            });
         });
 
-        // ทำให้หน้าจอ Resize ได้อย่างสมูทเวลาเปิดในมือถือหรือย่อหน้าต่าง
+        // ฟังก์ชันเมื่อคลิกจังหวัด หรือกดค้นหาเจอ
+        function handleProvinceClick(event, d) {
+            zoomToFeature(d);
+        }
+
+        // ฟังก์ชันซูมเข้าไปที่จังหวัดเป้าหมาย
+        function zoomToFeature(d) {
+            const [[x0, y0], [x1, y1]] = path.bounds(d);
+            
+            // คำนวณสเกลให้พอดีกับหน้าจอ (ให้แสดงผลเยื้องซ้ายนิดหน่อยเผื่อเนื้อที่ให้ Sidebar)
+            let sidebarOffset = window.innerWidth > 768 ? 150 : 0; 
+            const scale = Math.min(10, 0.9 / Math.max((x1 - x0) / width, (y1 - y0) / height));
+            const x = -(x0 + x1) / 2 + (width / 2) - (sidebarOffset / scale);
+            const y = -(y0 + y1) / 2 + (height / 2);
+
+            // อนิเมชันซูม (ใช้เวลา 750ms)
+            svg.transition().duration(750).call(
+                zoom.transform, 
+                d3.zoomIdentity.translate(x, y).scale(scale)
+            );
+
+            // ไฮไลต์จังหวัดที่เลือก
+            g.selectAll(".province").classed("active", false);
+            // ถ้าคลิกจากแผนที่จะมี id, ถ้าค้นหาเราเช็คจากชื่อ
+            g.selectAll(".province").filter(p => p.properties.PROV_NAMT === d.properties.PROV_NAMT).classed("active", true);
+
+            // เปิด Sidebar และปุ่ม Back
+            document.getElementById("sidebar-title").innerText = d.properties.PROV_NAMT;
+            document.getElementById("sidebar").classList.add("open");
+            document.getElementById("back-btn").style.display = "block";
+            document.body.classList.add("zoomed"); // ซ่อนช่องค้นหาในมือถือ
+        }
+
+        // ระบบช่องค้นหา (ทำงานเมื่อผู้ใช้กดเลือกจาก Auto-complete หรือกด Enter)
+        document.getElementById("search-input").addEventListener("change", function(e) {
+            const val = e.target.value.trim();
+            if (!geoJsonData) return;
+
+            const feature = geoJsonData.features.find(f => f.properties.PROV_NAMT === val);
+            if(feature) {
+                zoomToFeature(feature);
+                this.blur(); // ซ่อนคีย์บอร์ดในมือถือ
+            }
+        });
+
+        // ปุ่มย้อนกลับ (รีเซ็ตซูม)
+        document.getElementById("back-btn").addEventListener("click", () => {
+            // ซูมกลับไปที่ภาพรวมเดิม
+            svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
+            
+            // ล้างไฮไลต์และปิด Sidebar
+            g.selectAll(".province").classed("active", false);
+            document.getElementById("sidebar").classList.remove("open");
+            document.getElementById("back-btn").style.display = "none";
+            document.getElementById("search-input").value = ""; // เคลียร์ช่องค้นหา
+            document.body.classList.remove("zoomed");
+        });
+
         window.addEventListener('resize', () => {
             svg.attr("width", window.innerWidth).attr("height", window.innerHeight);
         });
