@@ -4,15 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TAP - Store Locator</title>
+    <!-- โหลด Font Prompt จาก Google -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- โหลด D3.js -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
 
     <style>
         :root {
-            --brand-color: #ffcc00; /* สีเหลืองตามที่ต้องการ */
-            --brand-hover: #e6b800; /* สีตอนเอาเมาส์ชี้ */
+            --brand-color: #ffcc00; /* สีเหลืองสด */
+            --brand-hover: #e6b800; /* สีเหลืองเข้มตอน Hover */
             --map-bg: #f8fafc;
-            --text-main: #334155;
+            --text-dark: #1e293b;
         }
 
         body, html {
@@ -23,18 +25,18 @@
             background-color: var(--map-bg);
             font-family: 'Prompt', sans-serif;
             overflow: hidden;
-            color: var(--text-main);
+            color: var(--text-dark);
         }
 
-        /* Header */
+        /* Header แบรนด์ TAP */
         .header {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            padding: 16px 24px;
+            padding: 14px 24px;
             background-color: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
             z-index: 10;
             display: flex;
             align-items: center;
@@ -43,71 +45,86 @@
 
         .header-logo {
             font-size: 24px;
-            font-weight: 600;
-            color: var(--brand-color);
+            font-weight: 700;
+            color: #111111;
             margin: 0;
-            /* ใส่ขอบดำนิดๆ ให้โลโก้สีเหลืองสว่างเด่นขึ้นบนพื้นขาว */
-            text-shadow: -0.5px -0.5px 0 #333, 0.5px -0.5px 0 #333, -0.5px 0.5px 0 #333, 0.5px 0.5px 0 #333;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        /* Search Box (ตรงกลางบน) */
+        .header-logo span {
+            color: var(--brand-color);
+            background: #111;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        /* Search Box ตรงกลางบน */
         .search-container {
             position: absolute;
-            top: 80px;
+            top: 75px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 20;
             display: flex;
             align-items: center;
             background: white;
-            padding: 8px 16px;
+            padding: 8px 18px;
             border-radius: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             width: 90%;
-            max-width: 400px;
-            transition: all 0.3s;
+            max-width: 380px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .search-container:focus-within {
+            border-color: var(--brand-color);
         }
 
         .search-container input {
             border: none;
             outline: none;
             font-family: 'Prompt', sans-serif;
-            font-size: 16px;
+            font-size: 15px;
             width: 100%;
             margin-left: 10px;
             background: transparent;
+            color: var(--text-dark);
         }
 
         .search-icon {
-            width: 20px;
-            height: 20px;
-            fill: #94a3b8;
+            width: 18px;
+            height: 18px;
+            fill: #64748b;
         }
 
-        /* ปุ่มย้อนกลับ (Back Button) */
+        /* ปุ่มย้อนกลับ */
         #back-btn {
             position: absolute;
-            top: 80px;
+            top: 75px;
             left: 20px;
             z-index: 20;
             background-color: white;
-            color: #333;
+            color: var(--text-dark);
             border: 2px solid var(--brand-color);
-            padding: 8px 16px;
+            padding: 8px 18px;
             border-radius: 20px;
             font-family: 'Prompt', sans-serif;
             font-weight: 500;
+            font-size: 14px;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            display: none; /* ซ่อนไว้ก่อน จะโชว์ตอนซูม */
-            transition: background-color 0.2s, color 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            display: none;
+            transition: all 0.2s ease;
         }
 
         #back-btn:hover {
             background-color: var(--brand-color);
         }
 
-        /* Map Container */
+        /* พื้นที่แผนที่ */
         #map-container {
             width: 100vw;
             height: 100vh;
@@ -117,69 +134,72 @@
             cursor: grabbing;
         }
 
-        /* สไตล์แผนที่ SVG */
+        /* SVG จังหวัด */
         .province {
             fill: var(--brand-color);
             stroke: #ffffff;
             stroke-width: 0.8px;
-            transition: fill 0.2s ease;
+            transition: fill 0.2s ease, stroke-width 0.2s ease;
             cursor: pointer;
         }
+
         .province:hover {
             fill: var(--brand-hover);
         }
+
         .province.active {
             fill: var(--brand-hover);
+            stroke: #1e293b;
             stroke-width: 1.5px;
-            stroke: #333;
         }
-        
+
+        /* ชื่อจังหวัดบนแผนที่ */
         .province-label {
-            fill: #1e293b; /* เปลี่ยนเป็นสีเข้มให้ตัดกับพื้นเหลืองสว่าง */
-            font-size: 10px;
+            fill: #0f172a;
+            font-size: 9px;
             font-weight: 600;
             text-anchor: middle;
             pointer-events: none;
             user-select: none;
-            text-shadow: 0px 1px 2px rgba(255,255,255,0.7); 
+            text-shadow: 0px 0px 3px rgba(255, 255, 255, 0.9), 0px 0px 5px rgba(255, 255, 255, 0.9);
         }
 
-        /* แผงด้านข้าง (Sidebar) แสดงรายชื่อร้าน */
+        /* Sidebar แผงร้านค้า */
         #sidebar {
             position: absolute;
-            top: 60px; /* ใต้ Header */
+            top: 58px;
             right: 0;
             width: 100%;
-            max-width: 350px;
-            height: calc(100vh - 60px);
+            max-width: 360px;
+            height: calc(100vh - 58px);
             background: white;
-            box-shadow: -4px 0 15px rgba(0,0,0,0.05);
+            box-shadow: -4px 0 20px rgba(0,0,0,0.06);
             z-index: 15;
-            transform: translateX(100%); /* ซ่อนไว้ด้านขวา */
-            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             padding: 24px;
             box-sizing: border-box;
             overflow-y: auto;
         }
 
         #sidebar.open {
-            transform: translateX(0); /* สไลด์ออกมา */
+            transform: translateX(0);
         }
 
         .prov-title {
             font-size: 22px;
             font-weight: 600;
-            color: #333;
+            color: var(--text-dark);
             margin-top: 0;
             margin-bottom: 16px;
-            border-bottom: 2px solid var(--brand-color);
-            padding-bottom: 10px;
+            border-bottom: 3px solid var(--brand-color);
+            padding-bottom: 8px;
         }
 
         .store-card-placeholder {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            border-radius: 10px;
             padding: 16px;
             margin-bottom: 12px;
             color: #64748b;
@@ -196,12 +216,15 @@
 </head>
 <body>
 
+    <!-- Header -->
     <div class="header">
-        <h1 class="header-logo">TAP</h1>
+        <h1 class="header-logo"><span>TAP</span> Store Locator</h1>
     </div>
 
+    <!-- ปุ่มย้อนกลับ -->
     <button id="back-btn">← ย้อนกลับ</button>
 
+    <!-- ช่องค้นหา -->
     <div class="search-container">
         <svg class="search-icon" viewBox="0 0 24 24">
             <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
@@ -210,19 +233,53 @@
         <datalist id="province-list"></datalist>
     </div>
 
+    <!-- Sidebar รายชื่อร้าน -->
     <div id="sidebar">
         <h2 class="prov-title" id="sidebar-title">ชื่อจังหวัด</h2>
-        <div class="store-card-placeholder">📦 พื้นที่จำลอง: รอใส่กล่องรายชื่อร้านในสเตปต่อไป</div>
+        <div class="store-card-placeholder">📦 พื้นที่จำลอง: เดี๋ยวเอากล่องรายชื่อร้านมาใส่ตรงนี้</div>
+        <div class="store-card-placeholder">📦 พื้นที่จำลอง: สาขาในพื้นที่</div>
     </div>
 
+    <!-- แผนที่ -->
     <div id="map-container">
         <svg id="thailand-map"></svg>
     </div>
 
     <script>
+        // พจนานุกรมแปลชื่อจังหวัดภาษาอังกฤษ -> ไทย (กรณี GeoJSON ไม่มีภาษาไทย)
+        const enToThMap = {
+            "Bangkok Metropolis": "กรุงเทพมหานคร",
+            "Bangkok": "กรุงเทพมหานคร",
+            "Amnat Charoen": "อำนาจเจริญ", "Ang Thong": "อ่างทอง", "Buogkan": "บึงกาฬ",
+            "Buri Ram": "บุรีรัมย์", "Chachoengsao": "ฉะเชิงเทรา", "Chai Nat": "ชัยนาท",
+            "Chaiyaphum": "ชัยภูมิ", "Chanthaburi": "จันทบุรี", "Chiang Mai": "เชียงใหม่",
+            "Chiang Rai": "เชียงราย", "Chon Buri": "ชลบุรี", "Chumphon": "ชุมพร",
+            "Kalasin": "กาฬสินธุ์", "Kamphaeng Phet": "กำแพงเพชร", "Kanchanaburi": "กาญจนบุรี",
+            "Khon Kaen": "ขอนแก่น", "Krabi": "กระบี่", "Lampang": "ลำปาง",
+            "Lamphun": "ลำพูน", "Loei": "เลย", "Lop Buri": "ลพบุรี",
+            "Mae Hong Son": "แม่ฮ่องสอน", "Maha Sarakham": "มหาสารคาม", "Mukdahan": "มุกดาหาร",
+            "Nakhon Nayok": "นครนายก", "Nakhon Pathom": "นครปฐม", "Nakhon Phanom": "นครพนม",
+            "Nakhon Ratchasima": "นครราชสีมา", "Nakhon Sawan": "นครสวรรค์", "Nakhon Si Thammarat": "นครศรีธรรมราช",
+            "Nan": "น่าน", "Narathiwat": "นราธิวาส", "Nong Bua Lam Phu": "หนองบัวลำภู",
+            "Nong Khai": "หนองคาย", "Nonthaburi": "นนทบุรี", "Pathum Thani": "ปทุมธานี",
+            "Pattani": "ปัตตานี", "Phangnga": "พังงา", "Phatthalung": "พัทลุง",
+            "Phayao": "พะเยา", "Phetchabun": "เพชรบูรณ์", "Phetchaburi": "เพชรบุรี",
+            "Phichit": "พิจิตร", "Phitsanulok": "พิษณุโลก", "Phra Nakhon Si Ayutthaya": "พระนครศรีอยุธยา",
+            "Phrae": "แพร่", "Phuket": "ภูเก็ต", "Prachin Buri": "ปราจีนบุรี",
+            "Prachuap Khiri Khan": "ประจวบคีรีขันธ์", "Ranong": "ระนอง", "Ratchaburi": "ราชบุรี",
+            "Rayong": "ระยอง", "Roi Et": "ร้อยเอ็ด", "Sa Kaeo": "สระแก้ว",
+            "Sakon Nakhon": "สกลนคร", "Samut Prakan": "สมุทรปราการ", "Samut Sakhon": "สมุทรสาคร",
+            "Samut Songkhram": "สมุทรสงคราม", "Saraburi": "สระบุรี", "Satun": "สตูล",
+            "Sing Buri": "สิงห์บุรี", "Si Sa Ket": "ศรีสะเกษ", "Songkhla": "สงขลา",
+            "Sukhothai": "สุโขทัย", "Suphan Buri": "สุพรรณบุรี", "Surat Thani": "สุราษฎร์ธานี",
+            "Surin": "สุรินทร์", "Tak": "ตาก", "Trang": "ตรัง", "Trat": "ตราด",
+            "Ubon Ratchathani": "อุบลราชธานี", "Udon Thani": "อุดรธานี", "Uthai Thani": "อุทัยธานี",
+            "Uttaradit": "อุตรดิตถ์", "Yala": "ยะลา", "Yasothon": "ยโสธร"
+        };
+
         const width = window.innerWidth;
         const height = window.innerHeight;
-        let geoJsonData = null; 
+        let geoJsonData = null;
 
         const svg = d3.select("#thailand-map")
             .attr("width", width)
@@ -230,53 +287,65 @@
 
         const g = svg.append("g");
 
+        // ระบบ Zoom ของ D3
         const zoom = d3.zoom()
-            .scaleExtent([1, 15])
+            .scaleExtent([1, 20])
             .on("zoom", (event) => {
                 g.attr("transform", event.transform);
+                // ปรับขนาดตัวอักษรชื่อจังหวัดให้สมดุลตามระดับการซูม
                 const scale = event.transform.k;
-                g.selectAll(".province-label").style("font-size", Math.max(2.5, 10 / scale) + "px");
+                g.selectAll(".province-label").style("font-size", Math.max(2, 9 / scale) + "px");
             });
-        
+
         svg.call(zoom);
 
         const projection = d3.geoMercator();
         const path = d3.geoPath().projection(projection);
 
-        // 📌 ฟังก์ชันแก้ปัญหา undefined: สแกนหาชื่อภาษาไทยแบบครอบจักรวาล
+        // ฟังก์ชันแปลงและดึงชื่อจังหวัดภาษาไทย 100%
         function getProvName(d) {
+            if (!d || !d.properties) return "";
             let props = d.properties;
-            if (!props) return "ไม่ทราบชื่อ";
-            
-            // เช็ค Key ที่เจอบ่อยๆ ก่อน
-            if (props.pro_th) return props.pro_th;
-            if (props.name_th) return props.name_th;
-            if (props.PROV_NAMT) return props.PROV_NAMT;
-            if (props.ADM1_TH) return props.ADM1_TH;
-            if (props.pv_th) return props.pv_th;
-            
-            // ถ้าไม่เจอ วนหาตัวอักษรภาษาไทยในทุกๆ Key
-            for (let key in props) {
-                if (typeof props[key] === 'string' && /[\u0E00-\u0E7F]/.test(props[key])) {
-                    return props[key];
+
+            // 1. ค้นหาใน Property ภาษาไทย
+            let possibleKeys = ['pro_th', 'name_th', 'PROV_NAMT', 'ADM1_TH', 'pv_th'];
+            for (let k of possibleKeys) {
+                if (props[k] && /[\u0E00-\u0E7F]/.test(props[k])) {
+                    if (props[k].includes("กรุงเทพ") || props[k].includes("Bangkok")) return "กรุงเทพมหานคร";
+                    return props[k].trim();
                 }
             }
-            
-            // ถ้าไม่มีจริงๆ ดึงอันแรกมา
-            return props.name || props.NAME_1 || props.PROV_NAME || "ไม่ทราบชื่อ";
+
+            // 2. วนหาค่าภาษาไทยจากทุก Key
+            for (let k in props) {
+                if (typeof props[k] === 'string' && /[\u0E00-\u0E7F]/.test(props[k])) {
+                    if (props[k].includes("กรุงเทพ")) return "กรุงเทพมหานคร";
+                    return props[k].trim();
+                }
+            }
+
+            // 3. แปลงจากภาษาอังกฤษเป็นภาษาไทย
+            let rawEng = props.name || props.NAME_1 || props.PROV_NAME || props.pro_en || "";
+            rawEng = rawEng.trim();
+            if (enToThMap[rawEng]) return enToThMap[rawEng];
+
+            return rawEng;
         }
 
+        // โหลดข้อมูลแผนที่
         d3.json("https://raw.githubusercontent.com/cvibhagool/thailand-map/master/thailand-provinces.geojson").then(data => {
             geoJsonData = data;
             projection.fitExtent([[20, 80], [width - 20, height - 20]], data);
 
+            // วาดจังหวัด
             g.selectAll("path")
                 .data(data.features)
                 .enter().append("path")
                 .attr("class", "province")
                 .attr("d", path)
-                .on("click", handleProvinceClick);
+                .on("click", (event, d) => zoomToFeature(d));
 
+            // แสดงชื่อจังหวัดภาษาไทยบนแผนที่
             g.selectAll("text")
                 .data(data.features)
                 .enter().append("text")
@@ -286,60 +355,105 @@
                     return isNaN(centroid[0]) ? "translate(-100,-100)" : `translate(${centroid})`;
                 })
                 .attr("dy", ".35em")
-                .text(d => getProvName(d)); // ใช้ฟังก์ชันหาชื่อที่แก้บัคแล้ว
+                .text(d => getProvName(d));
 
+            // นำรายชื่อใส่ Auto-complete ช่องค้นหา (เรียง ก-ฮ)
             const datalist = document.getElementById("province-list");
-            data.features.forEach(f => {
-                let provName = getProvName(f);
+            const sortedNames = data.features
+                .map(f => getProvName(f))
+                .filter((v, i, a) => v && a.indexOf(v) === i)
+                .sort((a, b) => a.localeCompare(b, 'th'));
+
+            sortedNames.forEach(name => {
                 let option = document.createElement('option');
-                option.value = provName;
+                option.value = name;
                 datalist.appendChild(option);
             });
         });
 
-        function handleProvinceClick(event, d) {
-            zoomToFeature(d);
-        }
-
+        // 🎯 ฟังก์ชันซูมล็อกเป้าจังหวัด (สูตรปรับปรุงใหม่ ไม่หลุดจอ)
         function zoomToFeature(d) {
+            const name = getProvName(d);
             const [[x0, y0], [x1, y1]] = path.bounds(d);
-            let sidebarOffset = window.innerWidth > 768 ? 150 : 0; 
-            const scale = Math.min(10, 0.9 / Math.max((x1 - x0) / width, (y1 - y0) / height));
-            const x = -(x0 + x1) / 2 + (width / 2) - (sidebarOffset / scale);
-            const y = -(y0 + y1) / 2 + (height / 2);
+            
+            // หาจุดศูนย์กลางของจังหวัด
+            const cx = (x0 + x1) / 2;
+            const cy = (y0 + y1) / 2;
+            
+            const dx = x1 - x0;
+            const dy = y1 - y0;
 
-            svg.transition().duration(750).call(
-                zoom.transform, 
-                d3.zoomIdentity.translate(x, y).scale(scale)
-            );
+            // คำนวณพื้นที่ที่เหลือทางซ้าย (หัก Sidebar ออก)
+            const sidebarWidth = window.innerWidth > 768 ? 360 : 0;
+            const targetWidth = window.innerWidth - sidebarWidth;
+            const targetHeight = window.innerHeight;
 
+            // คำนวณระดับ Scale การซูม
+            let scale = 0.7 / Math.max(dx / targetWidth, dy / targetHeight);
+            scale = Math.max(2.5, Math.min(scale, 14)); // จำกัดความซูมระหว่าง 2.5x ถึง 14x
+
+            // คำนวณพิกัด Translate
+            const targetX = targetWidth / 2;
+            const targetY = targetHeight / 2;
+            const translateX = targetX - scale * cx;
+            const translateY = targetY - scale * cy;
+
+            // ซูมล็อกเป้าเข้าหาจังหวัด
+            svg.transition()
+                .duration(750)
+                .call(
+                    zoom.transform,
+                    d3.zoomIdentity.translate(translateX, translateY).scale(scale)
+                );
+
+            // ไฮไลต์เส้นขอบจังหวัด
             g.selectAll(".province").classed("active", false);
-            g.selectAll(".province").filter(p => getProvName(p) === getProvName(d)).classed("active", true);
+            g.selectAll(".province")
+                .filter(p => getProvName(p) === name)
+                .classed("active", true);
 
-            document.getElementById("sidebar-title").innerText = getProvName(d);
+            // อัปเดต UI หน้าจอ
+            document.getElementById("sidebar-title").innerText = name;
+            document.getElementById("search-input").value = name;
             document.getElementById("sidebar").classList.add("open");
             document.getElementById("back-btn").style.display = "block";
-            document.body.classList.add("zoomed"); 
+            document.body.classList.add("zoomed");
         }
 
-        document.getElementById("search-input").addEventListener("change", function(e) {
-            const val = e.target.value.trim();
-            if (!geoJsonData) return;
+        // ระบบค้นหาจาก Search Box
+        const searchInput = document.getElementById("search-input");
+        
+        function handleSearch() {
+            const val = searchInput.value.trim();
+            if (!geoJsonData || !val) return;
 
             const feature = geoJsonData.features.find(f => getProvName(f) === val);
-            if(feature) {
+            if (feature) {
                 zoomToFeature(feature);
-                this.blur();
+                searchInput.blur();
+            }
+        }
+
+        searchInput.addEventListener("change", handleSearch);
+        searchInput.addEventListener("input", (e) => {
+            const val = e.target.value.trim();
+            if (geoJsonData) {
+                const feature = geoJsonData.features.find(f => getProvName(f) === val);
+                if (feature) {
+                    zoomToFeature(feature);
+                    e.target.blur();
+                }
             }
         });
 
+        // ปุ่มย้อนกลับ (Reset ซูมออกภาพรวม)
         document.getElementById("back-btn").addEventListener("click", () => {
             svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
             
             g.selectAll(".province").classed("active", false);
             document.getElementById("sidebar").classList.remove("open");
             document.getElementById("back-btn").style.display = "none";
-            document.getElementById("search-input").value = ""; 
+            document.getElementById("search-input").value = "";
             document.body.classList.remove("zoomed");
         });
 
