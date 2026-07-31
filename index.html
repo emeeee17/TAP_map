@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAP - Store Locator</title>
+    <!-- Google Fonts: Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <style>
+        :root {
+            --primary: #F59E0B; /* Yellow-Orange */
+            --primary-dark: #D97706;
+            --primary-light: #FDE68A;
+            --text-dark: #333333;
+            --bg-light: #FFFBF0;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-light);
+        }
+
+        /* Map styling with warm filter */
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .leaflet-layer,
+        .leaflet-control-zoom-in,
+        .leaflet-control-zoom-out,
+        .leaflet-control-attribution {
+            /* Add yellow-orange tint to the base map */
+            filter: sepia(0.4) saturate(1.5) hue-rotate(-15deg) contrast(1.1);
+        }
+
+        /* Search Box */
+        .search-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            border-radius: 30px;
+            display: flex;
+            background: white;
+            overflow: hidden;
+            border: 2px solid var(--primary);
+        }
+
+        .search-container input {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            outline: none;
+            font-size: 16px;
+        }
+
+        .search-container button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 20px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: 0.3s;
+        }
+
+        .search-container button:hover {
+            background: var(--primary-dark);
+        }
+
+        /* Side Panel (Drawer) */
+        #side-panel {
+            position: absolute;
+            top: 0;
+            left: -400px; /* Hidden initially */
+            width: 100%;
+            max-width: 380px;
+            height: 100%;
+            background: white;
+            z-index: 1001;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #side-panel.open {
+            left: 0;
+        }
+
+        .panel-header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            margin-right: 15px;
+            padding: 5px;
+            transition: transform 0.2s;
+        }
+
+        .back-btn:hover {
+            transform: translateX(-3px);
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: var(--bg-light);
+            position: relative;
+        }
+
+        /* View Containers */
+        #list-view, #detail-view {
+            width: 100%;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        #detail-view {
+            display: none;
+        }
+
+        /* Store List Items */
+        .store-item {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            cursor: pointer;
+            border-left: 4px solid var(--primary);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .store-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .store-name {
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 16px;
+        }
+
+        .store-district {
+            font-size: 14px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        /* Detail View Elements */
+        .detail-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .detail-address {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            font-size: 15px;
+            line-height: 1.5;
+            color: #444;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .btn i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        .btn-call {
+            background-color: #10B981; /* Green */
+            color: white;
+        }
+        .btn-call:hover { background-color: #059669; }
+        .btn-call.disabled {
+            background-color: #ccc;
+            pointer-events: none;
+        }
+
+        .btn-map {
+            background-color: var(--primary);
+            color: white;
+        }
+        .btn-map:hover { background-color: var(--primary-dark); }
+        
+        /* Marker CSS */
+        .custom-marker {
+            background-color: var(--primary);
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Floating Search Box -->
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="ค้นหาจังหวัด เช่น น่าน, เชียงใหม่..." list="province-list" autocomplete="off">
+        <datalist id="province-list"></datalist>
+        <button onclick="handleSearch()"><i class="fas fa-search"></i></button>
+    </div>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Side Panel -->
+    <div id="side-panel">
+        <div class="panel-header" id="panel-header">
+            <button class="back-btn" id="btn-back" onclick="goBack()"><i class="fas fa-chevron-left"></i></button>
+            <span id="panel-title">TAP - เลือกร้านค้า</span>
+        </div>
+        <div class="panel-content">
+            <!-- List View -->
+            <div id="list-view">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Detail View -->
+            <div id="detail-view">
+                <div class="detail-title" id="d-name">ชื่อร้าน</div>
+                <div class="detail-address" id="d-address">ที่อยู่เต็ม</div>
+                <div class="action-buttons">
+                    <a href="#" id="d-phone" class="btn btn-call"><i class="fas fa-phone-alt"></i> โทรติดต่อร้าน</a>
+                    <a href="#" id="d-gmap" target="_blank" class="btn btn-map"><i class="fas fa-map-marked-alt"></i> นำทาง Google Map</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // --- 1. Data Setup ---
+        const rawData = {
+            "น่าน": [
+                {"name": "ที พี ฮาร์ดแวร์", "phone": "089-852-2666", "address": "70/2 ม.2 ต.ท่าวังผา อ.ท่าวังผา จ.น่าน 55140", "gmap": "https://www.google.com/maps/search/?api=1&query=ที พี ฮาร์ดแวร์ น่าน"},
+                {"name": "วันทนา", "phone": "083-325-3121", "address": "188 ม.3 ต.ยอด อ.สองแคว", "gmap": "https://www.google.com/maps/search/?api=1&query=วันทนา"},
+                {"name": "พีพี โฮมเพ้นท์", "phone": "094-635-5664", "address": "136 ม.10 ต.เชียงกลาง อ.เชียงกลาง จ.น่าน 55160", "gmap": "https://www.google.com/maps/search/?api=1&query=พีพี โฮมเพ้นท์ น่าน"}
+            ],
+            "พะเยา": [
+                {"name": "แสงทองค้าไม้", "phone": "082-325-2554", "address": "228 ม.1 ต.ห้วยข้าวก่ำ อ.จุน จ.พะเยา 56150", "gmap": "https://www.google.com/maps/search/?api=1&query=แสงทองค้าไม้ พะเยา"},
+                {"name": "ณัฐพงษ์พาณิชย์", "phone": "085-029-8657", "address": "172 ม.2 ต.คงสุวรรณ อ.ดอกคำใต้ จ.พะเยา 56120", "gmap": "https://www.google.com/maps/search/?api=1&query=ณัฐพงษ์พาณิชย์ พะเยา"}
+            ],
+            "ลำปาง": [
+                {"name": "ลุงน้อยวัสดุก่อสร้าง", "phone": "086-197-8596", "address": "111 ม.9 ต.วังซ้าย อ.วังเหนือ จ.ลำปาง 52140", "gmap": "https://www.google.com/maps/search/?api=1&query=ลุงน้อยวัสดุก่อสร้าง ลำปาง"},
+                {"name": "สินทวี",เข้าใจครับ คุณต้องการงานที่เนี๊ยบ ใช้งานได้จริง และสมกับที่คุณคาดหวัง ผมได้จัดเตรียม Source Code แบบ Single File (รวม HTML, CSS, JS ไว้ในไฟล์เดียว) เพื่อให้คุณนำไปรันใช้งานได้ทันที 
+
+ระบบนี้ใช้ **Leaflet.js** ในการทำแผนที่ ซึ่งรองรับการเลื่อนและซูมได้อย่างสมูท พร้อมฟิลเตอร์ปรับโทนสีแผนที่ให้เป็น **โทนเหลืองอบส้ม** ตามที่รีเควส และมีการทำแอนิเมชันสไลด์แถบด้านข้าง (Sidebar) พร้อมแยกระดับข้อมูล (รายชื่อร้าน -> รายละเอียดร้าน) และมีปุ่มย้อนกลับครบถ้วน
+
+นอกจากนี้ ผมได้ใช้ชื่อ **TAP** ตามที่คุณระบุ และมีการจัดการข้อมูลอำเภอ/เขตจากที่อยู่แบบอัตโนมัติ
+
+คุณสามารถคัดลอกโค้ดด้านล่างนี้ไปบันทึกเป็นไฟล์ `index.html` และเปิดในเบราว์เซอร์ได้เลยครับ
+
+```html
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบค้นหาสาขา TAP</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="[https://unpkg.com/leaflet@1.9.4/dist/leaflet.css](https://unpkg.com/leaflet@1.9.4/dist/leaflet.css)" />
+    <!-- Google Fonts -->
+    <link href="[https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap](https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap)" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #f59e0b; /* โทนเหลืองส้ม */
+            --primary-dark: #d97706;
+            --primary-light: #fef3c7;
+            --bg-color: #fffbeb;
+            --text-dark: #451a03;
+            --white: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Kanit', sans-serif;
+        }
+
+        body {
+            overflow: hidden;
+            background-color: var(--bg-color);
+        }
+
+        /* Map Container */
+        #map {
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        /* ปรับโทนสีแผนที่ให้เป็นสีเหลืองอบส้ม */
+        .leaflet-layer,
+        .leaflet-control-zoom-in,
+        .leaflet-control-zoom-out,
+        .leaflet-control-attribution {
+            filter: sepia(0.6) hue-rotate(-15deg) saturate(1.8) brightness(1.05);
+        }
+
+        /* Search Box Overlay */
+        .search-container {
+            position: absolute;
+            top: 20px;
+            left: 50px;
+            z-index: 1000;
+            background: var(--white);
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 2px solid var(--primary);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-container h2 {
+            font-size: 1.2rem;
+            color: var(--primary-dark);
+            margin: 0;
+        }
+
+        select {
+            padding: 8px 15px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            outline: none;
+            cursor: pointer;
+            min-width: 200px;
+        }
+
+        select:focus {
+            border-color: var(--primary);
+        }
+
+        /* Sidebar Overlay */
+        #sidebar {
+            position: absolute;
+            top: 0;
+            right: -400px; /* ซ่อนไว้ขอบจอ */
+            width: 400px;
+            max-width: 100vw;
+            height: 100vh;
+            background: var(--white);
+            z-index: 1001;
+            box-shadow: -5px 0 25px rgba(0,0,0,0.15);
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            border-left: 4px solid var(--primary);
+        }
+
+        #sidebar.active {
+            right: 0;
+        }
+
+        .sidebar-header {
+            background: var(--primary);
+            color: var(--white);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 1rem;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.4);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: var(--primary-light);
+        }
+
+        /* List Items */
+        .shop-item {
+            background: var(--white);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .shop-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);
+        }
+
+        .shop-name {
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 1.1rem;
+        }
+
+        .shop-district {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        /* Detail View */
+        #detail-view {
+            display: none; /* ซ่อนไว้ก่อน */
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .detail-card {
+            background: var(--white);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .detail-card h3 {
+            color: var(--primary-dark);
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--primary-light);
+            padding-bottom: 10px;
+        }
+
+        .detail-card p {
+            color: var(--text-dark);
+            line-height: 1.6;
+            margin-bottom: 20px;
+            font-size: 1.05rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn {
+            display: block;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-call {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-call:hover {
+            background: #059669;
+        }
+
+        .btn-map {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-map:hover {
+            background: var(--primary-dark);
+        }
+
+        .hidden-references {
+            display: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            #sidebar { width: 100%; right: -100%; }
+            .search-container { left: 10px; right: 10px; top: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- References requested by user -->
+    <div class="hidden-references">
+        35b57b9f-410a-4f81-9285-54a8347f0d1d_5.jpeg
+        b4c029c2-50e5-4b8b-a842-924e01ef94b6_5.jpeg
+        bd3c42ac-e7e6-44e1-b79e-34eb5154352b_5.jpeg
+    </div>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Search Overlay -->
+    <div class="search-container">
+        <h2>TAP Branch</h2>
+        <select id="province-select">
+            <option value="">-- เลือกจังหวัด --</option>
+        </select>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <button class="back-btn" id="btn-back" onclick="handleBack()">❮ กลับ</button>
+            <span id="sidebar-title">รายชื่อร้าน</span>
+        </div>
+        
+        <div class="sidebar-content">
+            <!-- List View -->
+            <div id="list-view"></div>
+            
+            <!-- Detail View -->
+            <div id="detail-view">
+                <div class="detail-card">
+                    <h3 id="d-name">ชื่อร้าน</h3>
+                    <p><strong>ที่อยู่:</strong> <span id="d-address"></span></p>
+                    <div class="action-buttons">
+                        <a href="#" id="d-phone" class="btn btn-call">📞 โทรติดต่อ</a>
+                        <a href="#" id="d-gmap" target="_blank" class="btn btn-map">📍 เปิด Google Map</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="[https://unpkg.com/leaflet@1.9.4/dist/leaflet.js](https://unpkg.com/leaflet@1.9.4/dist/leaflet.js)"></script>
+    <script>
+        // 1. Data Source (JSON จากที่ผู้ใช้ให้มา)
+        const tapData = {
+            "น่าน": [
+                {"name": "ที พี ฮาร์ดแวร์", "phone": "089-852-2666", "address": "70/2 ม.2 ต.ท่าวังผา อ.ท่าวังผา จ.น่าน 55140", "gmap": "[https://www.google.com/maps/search/?api=1&query=ท](https://www.google.com/maps/search/?api=1&query=ท)ี พี ฮาร์ดแวร์ น่าน"},
+                {"name": "วันทนา", "phone": "083-325-3121", "address": "188 ม.3 ต.ยอด อ.สองแคว", "gmap": "[https://www.google.com/maps/search/?api=1&query=ว](https://www.google.com/maps/search/?api=1&query=ว)ันทนา"},
+                {"name": "พีพี โฮมเพ้นท์", "phone": "094-635-5664", "address": "136 ม.10 ต.เชียงกลาง อ.เชียงกลาง จ.น่าน 55160", "gmap": "[https://www.google.com/maps/search/?api=1&query=พ](https://www.google.com/maps/search/?api=1&query=พ)ีพี โฮมเพ้นท์ น่าน"},
+                {"name": "ปรีชาบริการ", "phone": "086-914-3140", "address": "109 ม.1 หมู่บ้าน ดู่ใต้ ต.ดู่ใต้ อ.เมืองน่าน 55000", "gmap": "[https://www.google.com/maps/search/?api=1&query=ปร](https://www.google.com/maps/search/?api=1&query=ปร)ีชาบริการ น่าน"},
+                {"name": "เวียงสาวัสดุภัณฑ์", "phone": "083-956-9545", "address": "407/12 ม.3 ต.กลางเวียง อ.เวียงสา จ.น่าน 55110", "gmap": "[https://www.google.com/maps/search/?api=1&query=เว](https://www.google.com/maps/search/?api=1&query=เว)ียงสาวัสดุภัณฑ์ น่าน"}
+            ],
+            "พะเยา": [
+                {"name": "แสงทองค้าไม้", "phone": "082-325-2554", "address": "228 ม.1 ต.ห้วยข้าวก่ำ อ.จุน จ.พะเยา 56150", "gmap": "[https://www.google.com/maps/search/?api=1&query=แสงทองค](https://www.google.com/maps/search/?api=1&query=แสงทองค)้าไม้ พะเยา"},
+                {"name": "ว.เอกภัณฑ์", "phone": "093-197-4433", "address": "180/1 ม.2 ต.ห้วยยางขาม อ.จุน จ.พะเยา 56150", "gmap": "[https://www.google.com/maps/search/?api=1&query=ว.เอกภ](https://www.google.com/maps/search/?api=1&query=ว.เอกภ)ัณฑ์ พะเยา"}
+            ],
+            "ลำปาง": [
+                {"name": "ชูพาณิชย์", "phone": "", "address": "65 ม.4 ต.หลวงเหนือ อ.งาว", "gmap": "[https://www.google.com/maps/search/?api=1&query=ช](https://www.google.com/maps/search/?api=1&query=ช)ูพาณิชย์"},
+                {"name": "ลุงน้อยวัสดุก่อสร้าง", "phone": "086-197-8596", "address": "111 ม.9 ต.วังซ้าย อ.วังเหนือ จ.ลำปาง 52140", "gmap": "[https://www.google.com/maps/search/?api=1&query=ล](https://www.google.com/maps/search/?api=1&query=ล)ุงน้อยวัสดุก่อสร้าง ลำปาง"}
+            ],
+            "ลำพูน": [
+                {"name": "อุดมรวมวัสดุ", "phone": "087-725-2175", "address": "138 ม.7 ต.แม่แรง อ.ป่าซาง จ.ลำพูน 51120", "gmap": "[https://www.google.com/maps/search/?api=1&query=อ](https://www.google.com/maps/search/?api=1&query=อ)ุดมรวมวัสดุ ลำพูน"},
+                {"name": "แม่เทยพาณิชย์", "phone": "082-035-6787", "address": "179 ม.13 ต.แม่ตืน อ.ลี้ จ.ลำพูน 51110", "gmap": "[https://www.google.com/maps/search/?api=1&query=แม](https://www.google.com/maps/search/?api=1&query=แม)่เทยพาณิชย์ ลำพูน"}
+            ],
+            "อุตรดิตถ์": [
+                {"name": "ช.ทวีทรัพย์การค้า", "phone": "081-916-7259", "address": "134/1 ม.13 ต.บ่อทอง อ.ทองแสงขัน จ.อุตรดิตถ์ 53230", "gmap": "[https://www.google.com/maps/search/?api=1&query=ช.ทว](https://www.google.com/maps/search/?api=1&query=ช.ทว)ีทรัพย์การค้า อุตรดิตถ์"}
+            ],
+            "เชียงราย": [
+                {"name": "ป.บุญเจริญ ค้าวัสดุก่อสร้าง จำกัด", "phone": "062-735-9874", "address": "347 ม.10 อ.นางแล อ.เมืองเชียงราย 57100", "gmap": "[https://www.google.com/maps/search/?api=1&query=ป.บ](https://www.google.com/maps/search/?api=1&query=ป.บ)ุญเจริญ"}
+            ],
+            "เชียงใหม่": [
+                {"name": "มาดี ชอป", "phone": "089-852-2439", "address": "99/2 ม.1 ต.แม่คือ อ.ดอยสะเก็ด จ.เชียงใหม่ 50220", "gmap": "[https://www.google.com/maps/search/?api=1&query=มาด](https://www.google.com/maps/search/?api=1&query=มาด)ี ชอป เชียงใหม่"}
+            ],
+            "แพร่": [
+                {"name": "สายฝน", "phone": "091-854-9586", "address": "อ.ลอง", "gmap": "[https://www.google.com/maps/search/?api=1&query=สายฝน](https://www.google.com/maps/search/?api=1&query=สายฝน)"}
+            ]
+        };
+
+        // พิกัดกลางของแต่ละจังหวัดสำหรับการทำแอนิเมชัน Zoom/Focus
+        const provinceCoords = {
+            "น่าน": [18.7756, 100.7730],
+            "พะเยา": [19.1666, 99.9022],
+            "ลำปาง": [18.2888, 99.4930],
+            "ลำพูน": [18.5745, 99.0087],
+            "อุตรดิตถ์": [17.6256, 100.0993],
+            "เชียงราย": [19.9076, 99.8360],
+            "เชียงใหม่": [18.7953, 98.9620],
+            "แพร่": [18.1446, 100.1403]
+        };
+
+        // 2. Initialize Leaflet Map (Focus ประเทศไทย)
+        const map = L.map('map', {zoomControl: false}).setView([16.5000, 100.0000], 6);
+        
+        // ใช้แผนที่ OpenStreetMap แบบปกติ แล้วใช้ CSS Filter ปรับโทนสีเอาตามโจทย์
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // State Tracking
+        let currentView = 'hidden'; // hidden, list, detail
+        
+        // 3. Populate Dropdown
+        const selectBox = document.getElementById('province-select');
+        Object.keys(tapData).forEach(prov => {
+            let option = document.createElement('option');
+            option.value = prov;
+            option.textContent = prov;
+            selectBox.appendChild(option);
+        });
+
+        // 4. Function: แยกชื่ออำเภอ/เขต ออกจากที่อยู่
+        function extractDistrict(address) {
+            const match = address.match(/(อ\.|อำเภอ)\s*([ก-๙]+)/);
+            return match ? match[0] : address.substring(0, 30) + "..."; // ถ้าไม่มีอำเภอ ให้โชว์ที่อยู่ย่อๆแทน
+        }
+
+        // 5. Event Listener สำหรับการเลือกจังหวัด
+        selectBox.addEventListener('change', function() {
+            const selectedProv = this.value;
+            if (!selectedProv) {
+                closeSidebar();
+                map.flyTo([16.5000, 100.0000], 6, { animate: true, duration: 1.5 });
+                return;
+            }
+
+            // Animate Zoom ไปยังจังหวัดที่เลือก
+            if (provinceCoords[selectedProv]) {
+                map.flyTo(provinceCoords[selectedProv], 9, {
+                    animate: true,
+                    duration: 1.5
+                });
+            }
+
+            // สร้างรายการร้านค้าลงใน Sidebar
+            renderShopList(selectedProv);
+        });
+
+        // ฟังก์ชันสร้างรายชื่อร้านในกล่องด้านข้าง
+        function renderShopList(province) {
+            const shops = tapData[province];
+            const listView = document.getElementById('list-view');
+            listView.innerHTML = '';
+            
+            shops.forEach(shop => {
+                const item = document.createElement('div');
+                item.className = 'shop-item';
+                
+                // เอาก้อน ชื่อร้าน + เขต มาแสดงตามที่ขอ
+                const district = extractDistrict(shop.address);
+                item.innerHTML = `
+                    <div>
+                        <div class="shop-name">${shop.name}</div>
+                        <div class="shop-district">📍 ${district}</div>
+                    </div>
+                    <div style="color: var(--primary);">❯</div>
+                `;
+                
+                item.onclick = () => showShopDetail(shop);
+                listView.appendChild(item);
+            });
+
+            document.getElementById('sidebar-title').textContent = `สาขาใน จ.${province}`;
+            openSidebar();
+            
+            // สลับ View
+            document.getElementById('list-view').style.display = 'block';
+            document.getElementById('detail-view').style.display = 'none';
+            currentView = 'list';
+        }
+
+        // ฟังก์ชันแสดงหน้ารายละเอียดเมื่อกดเข้าร้าน
+        function showShopDetail(shop) {
+            document.getElementById('d-name').textContent = shop.name;
+            document.getElementById('d-address').textContent = shop.address;
+            
+            const btnCall = document.getElementById('d-phone');
+            if (shop.phone) {
+                btnCall.href = `tel:${shop.phone.replace(/-/g, '')}`;
+                btnCall.style.display = 'block';
+                btnCall.textContent = `📞 โทร: ${shop.phone}`;
+            } else {
+                btnCall.style.display = 'none'; // ซ่อนปุ่มโทรถ้าไม่มีเบอร์
+            }
+            
+            document.getElementById('d-gmap').href = shop.gmap;
+
+            document.getElementById('sidebar-title').textContent = 'รายละเอียด';
+            
+            // สลับ View
+            document.getElementById('list-view').style.display = 'none';
+            document.getElementById('detail-view').style.display = 'flex';
+            currentView = 'detail';
+        }
+
+        // ฟังก์ชันจัดการปุ่ม Back
+        function handleBack() {
+            if (currentView === 'detail') {
+                // จาก Detail ถอยกลับไป List
+                document.getElementById('list-view').style.display = 'block';
+                document.getElementById('detail-view').style.display = 'none';
+                document.getElementById('sidebar-title').textContent = `สาขาใน จ.${selectBox.value}`;
+                currentView = 'list';
+            } else if (currentView === 'list') {
+                // จาก List ถอยกลับไปหน้าแผนที่หลัก (ปิด Sidebar)
+                closeSidebar();
+                selectBox.value = "";
+                map.flyTo([16.5000, 100.0000], 6, { animate: true, duration: 1.5 });
+            }
+        }
+
+        function openSidebar() {
+            document.getElementById('sidebar').classList.add('active');
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('active');
+            currentView = 'hidden';
+        }
+    </script>
+</body>
+</html>
