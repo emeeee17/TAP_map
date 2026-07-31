@@ -9,8 +9,8 @@
 
     <style>
         :root {
-            --brand-color: #f59e0b; /* สีเหลืองอมส้ม (Amber) */
-            --brand-hover: #d97706; /* สีเหลืองอมส้มเข้มขึ้นตอน Hover */
+            --brand-color: #ffcc00; /* สีเหลืองตามที่ต้องการ */
+            --brand-hover: #e6b800; /* สีตอนเอาเมาส์ชี้ */
             --map-bg: #f8fafc;
             --text-main: #334155;
         }
@@ -46,6 +46,8 @@
             font-weight: 600;
             color: var(--brand-color);
             margin: 0;
+            /* ใส่ขอบดำนิดๆ ให้โลโก้สีเหลืองสว่างเด่นขึ้นบนพื้นขาว */
+            text-shadow: -0.5px -0.5px 0 #333, 0.5px -0.5px 0 #333, -0.5px 0.5px 0 #333, 0.5px 0.5px 0 #333;
         }
 
         /* Search Box (ตรงกลางบน) */
@@ -89,7 +91,7 @@
             left: 20px;
             z-index: 20;
             background-color: white;
-            color: var(--brand-color);
+            color: #333;
             border: 2px solid var(--brand-color);
             padding: 8px 16px;
             border-radius: 20px;
@@ -103,7 +105,6 @@
 
         #back-btn:hover {
             background-color: var(--brand-color);
-            color: white;
         }
 
         /* Map Container */
@@ -130,16 +131,17 @@
         .province.active {
             fill: var(--brand-hover);
             stroke-width: 1.5px;
+            stroke: #333;
         }
         
         .province-label {
-            fill: #ffffff;
+            fill: #1e293b; /* เปลี่ยนเป็นสีเข้มให้ตัดกับพื้นเหลืองสว่าง */
             font-size: 10px;
-            font-weight: 500;
+            font-weight: 600;
             text-anchor: middle;
             pointer-events: none;
             user-select: none;
-            text-shadow: 0px 1px 2px rgba(0,0,0,0.3); /* ให้ตัวหนังสือลอยชัดขึ้น */
+            text-shadow: 0px 1px 2px rgba(255,255,255,0.7); 
         }
 
         /* แผงด้านข้าง (Sidebar) แสดงรายชื่อร้าน */
@@ -167,10 +169,10 @@
         .prov-title {
             font-size: 22px;
             font-weight: 600;
-            color: var(--brand-color);
+            color: #333;
             margin-top: 0;
             margin-bottom: 16px;
-            border-bottom: 2px solid #f1f5f9;
+            border-bottom: 2px solid var(--brand-color);
             padding-bottom: 10px;
         }
 
@@ -186,30 +188,21 @@
             border-left: 4px solid var(--brand-color);
         }
 
-        /* ซ่อนแว่นขยายตอนโชว์ Sidebar ในมือถือ */
         @media (max-width: 768px) {
-            #sidebar {
-                max-width: 100%; /* เต็มจอในมือถือ */
-            }
-            body.zoomed .search-container {
-                display: none; /* ซ่อนช่องค้นหาเพื่อไม่ให้เกะกะตอนดูร้าน */
-            }
+            #sidebar { max-width: 100%; }
+            body.zoomed .search-container { display: none; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Header -->
     <div class="header">
         <h1 class="header-logo">TAP</h1>
     </div>
 
-    <!-- ปุ่มย้อนกลับ -->
     <button id="back-btn">← ย้อนกลับ</button>
 
-    <!-- ช่องค้นหา -->
     <div class="search-container">
-        <!-- SVG แว่นขยาย -->
         <svg class="search-icon" viewBox="0 0 24 24">
             <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
         </svg>
@@ -217,16 +210,11 @@
         <datalist id="province-list"></datalist>
     </div>
 
-    <!-- Sidebar รายชื่อร้าน -->
     <div id="sidebar">
         <h2 class="prov-title" id="sidebar-title">ชื่อจังหวัด</h2>
-        <!-- รอใส่ข้อมูล JSON จริงในสเตปถัดไป -->
-        <div class="store-card-placeholder">📦 พื้นที่จำลอง: เดี๋ยวเอากล่องรายชื่อร้านมาใส่ตรงนี้</div>
-        <div class="store-card-placeholder">📦 พื้นที่จำลอง: ร้านสาขาที่ 2</div>
-        <div class="store-card-placeholder">📦 พื้นที่จำลอง: ร้านสาขาที่ 3</div>
+        <div class="store-card-placeholder">📦 พื้นที่จำลอง: รอใส่กล่องรายชื่อร้านในสเตปต่อไป</div>
     </div>
 
-    <!-- แผนที่ -->
     <div id="map-container">
         <svg id="thailand-map"></svg>
     </div>
@@ -234,7 +222,7 @@
     <script>
         const width = window.innerWidth;
         const height = window.innerHeight;
-        let geoJsonData = null; // เก็บข้อมูลแผนที่ไว้ใช้กับช่องค้นหา
+        let geoJsonData = null; 
 
         const svg = d3.select("#thailand-map")
             .attr("width", width)
@@ -242,15 +230,12 @@
 
         const g = svg.append("g");
 
-        // ระบบ Zoom
         const zoom = d3.zoom()
             .scaleExtent([1, 15])
             .on("zoom", (event) => {
                 g.attr("transform", event.transform);
-                
-                // ปรับขนาดตัวหนังสือให้เล็กลงเมื่อซูมเข้า จะได้ไม่ล้นจอ
                 const scale = event.transform.k;
-                g.selectAll(".province-label").style("font-size", Math.max(3, 10 / scale) + "px");
+                g.selectAll(".province-label").style("font-size", Math.max(2.5, 10 / scale) + "px");
             });
         
         svg.call(zoom);
@@ -258,12 +243,33 @@
         const projection = d3.geoMercator();
         const path = d3.geoPath().projection(projection);
 
-        // โหลดข้อมูลพิกัด
+        // 📌 ฟังก์ชันแก้ปัญหา undefined: สแกนหาชื่อภาษาไทยแบบครอบจักรวาล
+        function getProvName(d) {
+            let props = d.properties;
+            if (!props) return "ไม่ทราบชื่อ";
+            
+            // เช็ค Key ที่เจอบ่อยๆ ก่อน
+            if (props.pro_th) return props.pro_th;
+            if (props.name_th) return props.name_th;
+            if (props.PROV_NAMT) return props.PROV_NAMT;
+            if (props.ADM1_TH) return props.ADM1_TH;
+            if (props.pv_th) return props.pv_th;
+            
+            // ถ้าไม่เจอ วนหาตัวอักษรภาษาไทยในทุกๆ Key
+            for (let key in props) {
+                if (typeof props[key] === 'string' && /[\u0E00-\u0E7F]/.test(props[key])) {
+                    return props[key];
+                }
+            }
+            
+            // ถ้าไม่มีจริงๆ ดึงอันแรกมา
+            return props.name || props.NAME_1 || props.PROV_NAME || "ไม่ทราบชื่อ";
+        }
+
         d3.json("https://raw.githubusercontent.com/cvibhagool/thailand-map/master/thailand-provinces.geojson").then(data => {
             geoJsonData = data;
             projection.fitExtent([[20, 80], [width - 20, height - 20]], data);
 
-            // วาดจังหวัด
             g.selectAll("path")
                 .data(data.features)
                 .enter().append("path")
@@ -271,7 +277,6 @@
                 .attr("d", path)
                 .on("click", handleProvinceClick);
 
-            // ใส่ชื่อจังหวัด
             g.selectAll("text")
                 .data(data.features)
                 .enter().append("text")
@@ -281,72 +286,60 @@
                     return isNaN(centroid[0]) ? "translate(-100,-100)" : `translate(${centroid})`;
                 })
                 .attr("dy", ".35em")
-                .text(d => d.properties.PROV_NAMT);
+                .text(d => getProvName(d)); // ใช้ฟังก์ชันหาชื่อที่แก้บัคแล้ว
 
-            // นำชื่อจังหวัดใส่ใน Datalist เพื่อให้ Search Box มี Auto-complete
             const datalist = document.getElementById("province-list");
             data.features.forEach(f => {
+                let provName = getProvName(f);
                 let option = document.createElement('option');
-                option.value = f.properties.PROV_NAMT;
+                option.value = provName;
                 datalist.appendChild(option);
             });
         });
 
-        // ฟังก์ชันเมื่อคลิกจังหวัด หรือกดค้นหาเจอ
         function handleProvinceClick(event, d) {
             zoomToFeature(d);
         }
 
-        // ฟังก์ชันซูมเข้าไปที่จังหวัดเป้าหมาย
         function zoomToFeature(d) {
             const [[x0, y0], [x1, y1]] = path.bounds(d);
-            
-            // คำนวณสเกลให้พอดีกับหน้าจอ (ให้แสดงผลเยื้องซ้ายนิดหน่อยเผื่อเนื้อที่ให้ Sidebar)
             let sidebarOffset = window.innerWidth > 768 ? 150 : 0; 
             const scale = Math.min(10, 0.9 / Math.max((x1 - x0) / width, (y1 - y0) / height));
             const x = -(x0 + x1) / 2 + (width / 2) - (sidebarOffset / scale);
             const y = -(y0 + y1) / 2 + (height / 2);
 
-            // อนิเมชันซูม (ใช้เวลา 750ms)
             svg.transition().duration(750).call(
                 zoom.transform, 
                 d3.zoomIdentity.translate(x, y).scale(scale)
             );
 
-            // ไฮไลต์จังหวัดที่เลือก
             g.selectAll(".province").classed("active", false);
-            // ถ้าคลิกจากแผนที่จะมี id, ถ้าค้นหาเราเช็คจากชื่อ
-            g.selectAll(".province").filter(p => p.properties.PROV_NAMT === d.properties.PROV_NAMT).classed("active", true);
+            g.selectAll(".province").filter(p => getProvName(p) === getProvName(d)).classed("active", true);
 
-            // เปิด Sidebar และปุ่ม Back
-            document.getElementById("sidebar-title").innerText = d.properties.PROV_NAMT;
+            document.getElementById("sidebar-title").innerText = getProvName(d);
             document.getElementById("sidebar").classList.add("open");
             document.getElementById("back-btn").style.display = "block";
-            document.body.classList.add("zoomed"); // ซ่อนช่องค้นหาในมือถือ
+            document.body.classList.add("zoomed"); 
         }
 
-        // ระบบช่องค้นหา (ทำงานเมื่อผู้ใช้กดเลือกจาก Auto-complete หรือกด Enter)
         document.getElementById("search-input").addEventListener("change", function(e) {
             const val = e.target.value.trim();
             if (!geoJsonData) return;
 
-            const feature = geoJsonData.features.find(f => f.properties.PROV_NAMT === val);
+            const feature = geoJsonData.features.find(f => getProvName(f) === val);
             if(feature) {
                 zoomToFeature(feature);
-                this.blur(); // ซ่อนคีย์บอร์ดในมือถือ
+                this.blur();
             }
         });
 
-        // ปุ่มย้อนกลับ (รีเซ็ตซูม)
         document.getElementById("back-btn").addEventListener("click", () => {
-            // ซูมกลับไปที่ภาพรวมเดิม
             svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
             
-            // ล้างไฮไลต์และปิด Sidebar
             g.selectAll(".province").classed("active", false);
             document.getElementById("sidebar").classList.remove("open");
             document.getElementById("back-btn").style.display = "none";
-            document.getElementById("search-input").value = ""; // เคลียร์ช่องค้นหา
+            document.getElementById("search-input").value = ""; 
             document.body.classList.remove("zoomed");
         });
 
