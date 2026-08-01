@@ -40,7 +40,7 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 56px;
+            height: 76px; /* เพิ่มความสูงของแท็บเมนูเพื่อรองรับโลโก้ใหญ่ขึ้น */
             padding: 0 20px;
             background-color: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(8px);
@@ -50,16 +50,17 @@
             align-items: center;
         }
 
-        /* ปรับแต่งรูปภาพโลโก้ให้พอดีกับ Header */
+        /* ปรับแต่งรูปภาพโลโก้ให้ใหญ่ขึ้นและขยับขวา */
         .header-logo-img {
-            height: 32px; /* ขนาดความสูงของโลโก้ */
+            height: 52px; /* ขยายขนาดความสูงของโลโก้ให้ใหญ่ขึ้น */
+            margin-left: 35px; /* ขยับโลโก้ไปทางขวา */
             width: auto;
             object-fit: contain;
         }
 
         .search-container {
             position: absolute;
-            top: 68px;
+            top: 92px; /* ขยับลงมาไม่ให้ซ้อนทับเมนูด้านบน */
             left: 50%;
             transform: translateX(-50%);
             z-index: 20;
@@ -96,7 +97,7 @@
 
         #back-btn {
             position: absolute;
-            top: 68px;
+            top: 92px; /* ขยับลงมาเท่ากับกล่อง Search */
             left: 16px;
             z-index: 30;
             background-color: white;
@@ -157,10 +158,10 @@
 
         #sidebar {
             position: absolute;
-            top: 56px;
+            top: 76px; /* เริ่มต้นต่อจากขอบล่างของแถบเมนูพอดี */
             right: 0;
             width: 360px;
-            height: calc(100vh - 56px);
+            height: calc(100vh - 76px); /* ปรับความสูงให้พอดีกับหน้าจอ */
             background: rgba(255, 255, 255, 0.88);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
