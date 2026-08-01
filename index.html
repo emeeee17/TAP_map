@@ -356,6 +356,367 @@
     </div>
 
     <!-- โหลดข้อมูลร้านค้าจากไฟล์ที่เราแปลงไว้ -->
+    <script src="storesนี่คือไฟล์ `index.html` ที่ปรับแก้ให้ดึงข้อมูลจาก key `['อำเภอ']` ตามที่คุณต้องการ แต่ในหน้าเว็บจะยังคงแสดงผลข้อความเป็น "📍 เขต/อำเภอ:" เหมือนเดิมครับ
+
+```html
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TAP - Store Locator</title>
+    <link href="[https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap](https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap)" rel="stylesheet">
+    <script src="[https://d3js.org/d3.v7.min.js](https://d3js.org/d3.v7.min.js)"></script>
+    <script src="stores.js"></script>
+
+    <style>
+        :root {
+            --brand-color: #ffcc00;
+            --brand-hover: #e6b800; 
+            --map-bg: #f8fafc;
+            --text-dark: #1e293b;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--map-bg);
+            font-family: 'Prompt', sans-serif;
+            overflow: hidden;
+            color: var(--text-dark);
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 56px;
+            padding: 0 20px;
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+        }
+
+        .header-logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: #111111;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .header-logo span {
+            color: var(--brand-color);
+            background: #111;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        .search-container {
+            position: absolute;
+            top: 68px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            padding: 8px 16px;
+            border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            width: 88%;
+            max-width: 380px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .search-container input {
+            border: none;
+            outline: none;
+            font-family: 'Prompt', sans-serif;
+            font-size: 15px;
+            width: 100%;
+            margin-left: 8px;
+            background: transparent;
+            color: var(--text-dark);
+        }
+
+        .search-icon {
+            width: 18px;
+            height: 18px;
+            fill: #64748b;
+            flex-shrink: 0;
+        }
+
+        #back-btn {
+            position: absolute;
+            top: 68px;
+            left: 16px;
+            z-index: 30;
+            background-color: white;
+            color: var(--text-dark);
+            border: 2px solid var(--brand-color);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-family: 'Prompt', sans-serif;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            display: none;
+            transition: all 0.2s ease;
+        }
+
+        #back-btn:active {
+            transform: scale(0.95);
+        }
+
+        #map-container {
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
+        }
+        #map-container:active {
+            cursor: grabbing;
+        }
+
+        .province {
+            fill: var(--brand-color);
+            stroke: #ffffff;
+            stroke-width: 0.8px;
+            transition: fill 0.2s ease;
+            cursor: pointer;
+        }
+
+        .province:hover {
+            fill: var(--brand-hover);
+        }
+
+        .province.active {
+            fill: var(--brand-hover);
+            stroke: #1e293b;
+            stroke-width: 1.5px;
+        }
+
+        .province-label {
+            fill: #0f172a;
+            font-size: 9px;
+            font-weight: 600;
+            text-anchor: middle;
+            pointer-events: none;
+            user-select: none;
+            text-shadow: 0px 0px 3px rgba(255, 255, 255, 0.9);
+        }
+
+        #sidebar {
+            position: absolute;
+            top: 56px;
+            right: 0;
+            width: 360px;
+            height: calc(100vh - 56px);
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: -4px 0 25px rgba(0,0,0,0.08);
+            z-index: 25;
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 24px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        #sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sheet-handle {
+            display: none;
+            width: 36px;
+            height: 4px;
+            background: #cbd5e1;
+            border-radius: 10px;
+            margin: 0 auto 12px auto;
+        }
+
+        .prov-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-top: 0;
+            margin-bottom: 16px;
+            border-bottom: 3px solid var(--brand-color);
+            padding-bottom: 8px;
+        }
+
+        /* ----- สไตล์ใหม่สำหรับร้านค้า ----- */
+        .store-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--brand-color);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .store-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+
+        .store-district {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 12px;
+        }
+
+        .store-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 4px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Prompt', sans-serif;
+            text-align: center;
+        }
+
+        .btn-call {
+            background: #eff6ff;
+            color: #3b82f6;
+            border: 1px solid #bfdbfe;
+        }
+
+        .btn-call:hover {
+            background: #dbeafe;
+        }
+
+        .btn-call.disabled {
+            background: #f1f5f9;
+            color: #94a3b8;
+            border-color: #e2e8f0;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .btn-map {
+            background: #f0fdf4;
+            color: #22c55e;
+            border: 1px solid #bbf7d0;
+        }
+
+        .btn-map:hover {
+            background: #dcfce7;
+        }
+
+        .btn svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
+        .store-card-placeholder {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 16px;
+            color: #64748b;
+            font-size: 14px;
+            text-align: center;
+            border-left: 4px solid var(--brand-color);
+        }
+
+        @media (max-width: 768px) {
+            #sidebar {
+                top: auto;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                height: 50vh;
+                border-radius: 20px 20px 0 0;
+                box-shadow: 0 -6px 25px rgba(0,0,0,0.12);
+                transform: translateY(100%);
+                padding: 16px 20px 20px 20px;
+                border-top: 1px solid rgba(255, 255, 255, 0.8);
+            }
+
+            #sidebar.open {
+                transform: translateY(0);
+            }
+
+            .sheet-handle {
+                display: block;
+            }
+
+            body.zoomed .search-container {
+                opacity: 0;
+                pointer-events: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1 class="header-logo"><span>TAP</span> Store Locator</h1>
+    </div>
+
+    <button id="back-btn">← ย้อนกลับ</button>
+
+    <div class="search-container">
+        <svg class="search-icon" viewBox="0 0 24 24">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+        </svg>
+        <input type="text" id="search-input" list="province-list" placeholder="ค้นหาจังหวัด...">
+        <datalist id="province-list"></datalist>
+    </div>
+
+    <div id="sidebar">
+        <div class="sheet-handle"></div>
+        <h2 class="prov-title" id="sidebar-title">ชื่อจังหวัด</h2>
+        
+        <!-- พื้นที่สำหรับใส่รายชื่อร้านค้า -->
+        <div id="store-list-container">
+            <div class="store-card-placeholder">📦 เลือกพื้นที่บนแผนที่เพื่อดูสาขา</div>
+        </div>
+    </div>
+
+    <div id="map-container">
+        <svg id="thailand-map"></svg>
+    </div>
+
+    <!-- โหลดข้อมูลร้านค้าจากไฟล์ที่เราแปลงไว้ -->
     <script src="stores.js"></script>
 
     <script>
@@ -457,8 +818,8 @@
 
             // จัดเรียงตามเขต/อำเภอ
             storesInProvince.sort((a, b) => {
-                let distA = a['อำเภอ/เขต'] || "";
-                let distB = b['อำเภอ/เขต'] || "";
+                let distA = a['อำเภอ'] || "";
+                let distB = b['อำเภอ'] || "";
                 return distA.localeCompare(distB, 'th');
             });
 
@@ -469,7 +830,7 @@
 
             storesInProvince.forEach(store => {
                 const storeName = store['ชื่อร้านค้า'] || "ไม่ระบุชื่อร้าน";
-                const district = store['อำเภอ/เขต'] || "-";
+                const district = store['อำเภอ'] || "-";
                 let phone = store['เบอร์โทรศัพท์'] || "";
                 phone = String(phone).trim();
                 const mapLink = store['ลิงก์ Google Maps'] || "#";
@@ -506,7 +867,7 @@
             });
         }
 
-        d3.json("https://raw.githubusercontent.com/cvibhagool/thailand-map/master/thailand-provinces.geojson").then(data => {
+        d3.json("[https://raw.githubusercontent.com/cvibhagool/thailand-map/master/thailand-provinces.geojson](https://raw.githubusercontent.com/cvibhagool/thailand-map/master/thailand-provinces.geojson)").then(data => {
             geoJsonData = data;
             projection.fitExtent([[20, 70], [width - 20, height - 20]], data);
 
