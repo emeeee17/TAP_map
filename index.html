@@ -338,7 +338,7 @@
         <svg class="search-icon" viewBox="0 0 24 24">
             <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
         </svg>
-        <input type="text" id="search-input" list="province-list" placeholder="ค้นหาจังหวัด...">
+        <input type="text" id="search-input" list="province-list" placeholder="ค้นหาจังหวัด (TH/EN)...">
         <datalist id="province-list"></datalist>
     </div>
 
@@ -356,7 +356,6 @@
     </div>
 
     <script>
-        // กำหนดข้อมูลหากไฟล์ stores.js โหลดไม่สำเร็จหรือไม่พบไฟล์
         if (typeof storeData === 'undefined') {
             window.storeData = [];
             console.warn("ไม่พบข้อมูลร้านค้า! ตรวจสอบว่ามีไฟล์ stores.js หรือไฟล์มี Syntax Error หรือไม่");
@@ -364,7 +363,7 @@
 
         const enToThMap = {
             "Bangkok Metropolis": "กรุงเทพมหานคร", "Bangkok": "กรุงเทพมหานคร",
-            "Amnat Charoen": "อำนาจเจริญ", "Ang Thong": "อ่างทอง", "Buogkan": "บึงกาฬ",
+            "Amnat Charoen": "อำนาจเจริญ", "Ang Thong": "อ่างทอง", "Buogkan": "บึงกาฬ", "Bueng Kan": "บึงกาฬ",
             "Buri Ram": "บุรีรัมย์", "Chachoengsao": "ฉะเชิงเทรา", "Chai Nat": "ชัยนาท",
             "Chaiyaphum": "ชัยภูมิ", "Chanthaburi": "จันทบุรี", "Chiang Mai": "เชียงใหม่",
             "Chiang Rai": "เชียงราย", "Chon Buri": "ชลบุรี", "Chumphon": "ชุมพร",
@@ -394,7 +393,7 @@
         let width = window.innerWidth;
         let height = window.innerHeight;
         let geoJsonData = null;
-        let statsPosition = null; // เก็บพิกัดของข้อความสถิติ
+        let statsPosition = null; 
 
         const svg = d3.select("#thailand-map")
             .attr("width", width)
@@ -409,7 +408,6 @@
                 const scale = event.transform.k;
                 g.selectAll(".province-label").style("font-size", Math.max(2, 9 / scale) + "px");
                 
-                // ถ้าย่อขยายจอ ให้ตัวเลขสถิติหดลงบ้าง เพื่อไม่ให้ล้นจอ
                 if (statsPosition) {
                     g.selectAll(".map-stats-group").attr("transform", 
                         `translate(${statsPosition[0]}, ${statsPosition[1]}) scale(${1 / Math.sqrt(scale)})`
@@ -426,9 +424,16 @@
             if (!d || !d.properties) return "";
             let props = d.properties;
 
+            let rawEng = props.name || props.NAME_1 || props.PROV_NAME || props.pro_en || "";
+            rawEng = rawEng.trim();
+
+            // ดักคำว่า Lake ทิ้งไปเลยไม่ให้โชว์บนแผนที่ และไม่เก็บเข้า Search List
+            if (rawEng.toLowerCase().includes("lake")) return "";
+            
             let possibleKeys = ['pro_th', 'name_th', 'PROV_NAMT', 'ADM1_TH', 'pv_th'];
             for (let k of possibleKeys) {
                 if (props[k] && /[\u0E00-\u0E7F]/.test(props[k])) {
+                    if (props[k].includes("ทะเลสาบ")) return ""; // ดักอีกชั้น
                     if (props[k].includes("กรุงเทพ") || props[k].includes("Bangkok")) return "กรุงเทพมหานคร";
                     return props[k].trim();
                 }
@@ -436,31 +441,27 @@
 
             for (let k in props) {
                 if (typeof props[k] === 'string' && /[\u0E00-\u0E7F]/.test(props[k])) {
+                    if (props[k].includes("ทะเลสาบ")) return "";
                     if (props[k].includes("กรุงเทพ")) return "กรุงเทพมหานคร";
                     return props[k].trim();
                 }
             }
 
-            let rawEng = props.name || props.NAME_1 || props.PROV_NAME || props.pro_en || "";
-            rawEng = rawEng.trim();
             if (enToThMap[rawEng]) return enToThMap[rawEng];
 
             return rawEng;
         }
 
-        // ฟังก์ชันในการแสดงรายชื่อร้านค้า
         function renderStores(provinceName) {
             const container = document.getElementById("store-list-container");
             container.innerHTML = ""; 
 
-            // ค้นหาร้านที่อยู่ในจังหวัดที่เลือก
             const storesInProvince = window.storeData.filter(s => {
                 let prov = s['จังหวัด'] || "";
                 if (provinceName === "กรุงเทพมหานคร" && prov.includes("กรุงเทพ")) return true;
                 return prov.trim() === provinceName;
             });
 
-            // จัดเรียงตามเขต/อำเภอ
             storesInProvince.sort((a, b) => {
                 let distA = a['อำเภอ'] || a['อำเภอ/เขต'] || "";
                 let distB = b['อำเภอ'] || b['อำเภอ/เขต'] || "";
@@ -533,11 +534,10 @@
                 .text(d => getProvName(d));
 
             // ---------------------------------------------------------
-            // สร้างข้อความ "ตัวแทนจำหน่าย 814 แห่งทั่วประเทศ" ฝังในแผนที่
+            // ขยับตัวเลข 814 ลงมาทางใต้ (ลดค่าแกน Y เหลือ 9.2)
             // ---------------------------------------------------------
-            statsPosition = projection([101.8, 11.5]); // พิกัดอ่าวไทย
+            statsPosition = projection([101.5, 9.2]); 
             
-            // นับสาขาจาก stores.js ถ้าไม่มีให้ใช้ค่าเริ่มต้น 814
             const totalStores = window.storeData ? window.storeData.length : 814;
             
             const statsGroup = g.append("g")
@@ -560,7 +560,7 @@
                 .style("font-size", "52px")
                 .style("font-weight", "700")
                 .style("pointer-events", "none")
-                .text(totalStores); // ดึงจำนวนสาขามาโชว์
+                .text(totalStores); 
 
             statsGroup.append("text")
                 .attr("text-anchor", "middle")
@@ -570,25 +570,40 @@
                 .style("font-weight", "600")
                 .style("pointer-events", "none")
                 .text("แห่งทั่วประเทศ");
-            // ---------------------------------------------------------
 
+            // ---------------------------------------------------------
+            // จัดการระบบ Search (เพิ่มชื่อภาษาอังกฤษให้ค้นเจอ)
+            // ---------------------------------------------------------
             const datalist = document.getElementById("province-list");
             const sortedNames = data.features
                 .map(f => getProvName(f))
-                .filter((v, i, a) => v && a.indexOf(v) === i)
+                .filter((v, i, a) => v && a.indexOf(v) === i) // v && ป้องกันค่าว่าง (เช่นทะเลสาบ)
                 .sort((a, b) => a.localeCompare(b, 'th'));
 
+            // เติมภาษาไทย
             sortedNames.forEach(name => {
                 let option = document.createElement('option');
                 option.value = name;
                 datalist.appendChild(option);
             });
+
+            // เติมภาษาอังกฤษ
+            for (const [en, th] of Object.entries(enToThMap)) {
+                if (sortedNames.includes(th)) {
+                    let option = document.createElement('option');
+                    option.value = en; // ให้ List แสดงและรับคำค้นหาเป็นภาษาอังกฤษ
+                    datalist.appendChild(option);
+                }
+            }
+
         }).catch(err => {
             console.error("โหลดข้อมูล GeoJSON แผนที่ล้มเหลว ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต", err);
         });
 
         function zoomToFeature(d) {
             const name = getProvName(d);
+            if (!name) return; // หากคลิกโดนพื้นที่ทะเลสาบที่ไม่แสดงชื่อ ก็จะไม่ให้เกิดแอคชั่นใดๆ
+
             const [[x0, y0], [x1, y1]] = path.bounds(d);
             
             const cx = (x0 + x1) / 2;
@@ -640,11 +655,19 @@
 
         const searchInput = document.getElementById("search-input");
         
-        function handleSearch() {
-            const val = searchInput.value.trim();
+        function handleSearch(e) {
+            const val = e.target.value.trim();
             if (!geoJsonData || !val) return;
 
-            const feature = geoJsonData.features.find(f => getProvName(f) === val);
+            let searchVal = val;
+            
+            // หากคำที่ค้นหาพิมพ์มาเป็นภาษาอังกฤษ จะทำการเปลี่ยนให้เป็นภาษาไทยโดยอัตโนมัติ
+            if (enToThMap[val]) {
+                searchVal = enToThMap[val];
+                e.target.value = searchVal; // สลับคำในช่องค้นหาเป็นภาษาไทย
+            }
+
+            const feature = geoJsonData.features.find(f => getProvName(f) === searchVal);
             if (feature) {
                 zoomToFeature(feature);
                 searchInput.blur();
@@ -652,16 +675,7 @@
         }
 
         searchInput.addEventListener("change", handleSearch);
-        searchInput.addEventListener("input", (e) => {
-            const val = e.target.value.trim();
-            if (geoJsonData) {
-                const feature = geoJsonData.features.find(f => getProvName(f) === val);
-                if (feature) {
-                    zoomToFeature(feature);
-                    e.target.blur();
-                }
-            }
-        });
+        searchInput.addEventListener("input", handleSearch); // ให้มันตอบสนองทันทีที่เลือกจาก List
 
         document.getElementById("back-btn").addEventListener("click", () => {
             svg.transition()
