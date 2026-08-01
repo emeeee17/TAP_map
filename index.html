@@ -6,6 +6,8 @@
     <title>TAP - Store Locator</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- โหลดข้อมูลร้านค้าเพียงครั้งเดียว -->
     <script src="stores.js"></script>
 
     <style>
@@ -202,7 +204,6 @@
             padding-bottom: 8px;
         }
 
-        /* ----- สไตล์ใหม่สำหรับร้านค้า ----- */
         .store-card {
             background: #fff;
             border: 1px solid #e2e8f0;
@@ -345,7 +346,6 @@
         <div class="sheet-handle"></div>
         <h2 class="prov-title" id="sidebar-title">ชื่อจังหวัด</h2>
         
-        <!-- พื้นที่สำหรับใส่รายชื่อร้านค้า -->
         <div id="store-list-container">
             <div class="store-card-placeholder">📦 เลือกพื้นที่บนแผนที่เพื่อดูสาขา</div>
         </div>
@@ -355,14 +355,11 @@
         <svg id="thailand-map"></svg>
     </div>
 
-    <!-- โหลดข้อมูลร้านค้าจากไฟล์ที่เราแปลงไว้ -->
-    <script src="stores.js"></script>
-
     <script>
         // กำหนดข้อมูลหากไฟล์ stores.js โหลดไม่สำเร็จหรือไม่พบไฟล์
         if (typeof storeData === 'undefined') {
             window.storeData = [];
-            console.warn("ไม่พบข้อมูลร้านค้า! ตรวจสอบว่ามีไฟล์ stores.js อยู่ในระดับเดียวกับ index.html");
+            console.warn("ไม่พบข้อมูลร้านค้า! ตรวจสอบว่ามีไฟล์ stores.js หรือไฟล์มี Syntax Error หรือไม่");
         }
 
         const enToThMap = {
@@ -455,10 +452,10 @@
                 return prov.trim() === provinceName;
             });
 
-            // จัดเรียงตามเขต/อำเภอ
+            // จัดเรียงตามเขต/อำเภอ (รองรับทั้ง key "อำเภอ" และ "อำเภอ/เขต")
             storesInProvince.sort((a, b) => {
-                let distA = a['อำเภอ/เขต'] || "";
-                let distB = b['อำเภอ/เขต'] || "";
+                let distA = a['อำเภอ'] || a['อำเภอ/เขต'] || "";
+                let distB = b['อำเภอ'] || b['อำเภอ/เขต'] || "";
                 return distA.localeCompare(distB, 'th');
             });
 
@@ -469,14 +466,14 @@
 
             storesInProvince.forEach(store => {
                 const storeName = store['ชื่อร้านค้า'] || "ไม่ระบุชื่อร้าน";
-                const district = store['อำเภอ/เขต'] || "-";
+                // แก้ไขตรงนี้ให้ดึงข้อมูลจาก "อำเภอ" หรือ "อำเภอ/เขต"
+                const district = store['อำเภอ'] || store['อำเภอ/เขต'] || "-";
+                
                 let phone = store['เบอร์โทรศัพท์'] || "";
                 phone = String(phone).trim();
                 const mapLink = store['ลิงก์ Google Maps'] || "#";
 
-                // เช็คว่ามีเบอร์หรือไม่ (ดักค่าว่าง หรือขีด หรือ none)
                 const hasPhone = phone && phone !== "-" && phone.toLowerCase() !== "none" && phone.toLowerCase() !== "nan" && phone.length > 2;
-                // ตัดตัวอักษรที่ไม่ใช่ตัวเลขออกสำหรับการสั่งโทรศัพท์
                 const telLink = hasPhone ? phone.replace(/[^0-9]/g, '') : "";
 
                 const callButtonHtml = hasPhone 
@@ -539,6 +536,8 @@
                 option.value = name;
                 datalist.appendChild(option);
             });
+        }).catch(err => {
+            console.error("โหลดข้อมูล GeoJSON แผนที่ล้มเหลว ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต", err);
         });
 
         function zoomToFeature(d) {
@@ -583,7 +582,6 @@
                 .filter(p => getProvName(p) === name)
                 .classed("active", true);
 
-            // เซ็ตชื่อ และวาดรายชื่อร้านค้า
             document.getElementById("sidebar-title").innerText = name;
             renderStores(name);
 
