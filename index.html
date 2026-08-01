@@ -12,8 +12,10 @@
 
     <style>
         :root {
-            --brand-color: #ffcc00;
-            --brand-hover: #e6b800; 
+            /* ปรับสีหลักให้เข้ากับโทนทอง/แดง */
+            --brand-color: #E0AA3E; 
+            --brand-hover: #F9F295; 
+            --stat-color: #d32f2f; /* สีแดงสำหรับตัวเลข */
             --map-bg: #f8fafc;
             --text-dark: #1e293b;
         }
@@ -136,21 +138,23 @@
         }
 
         .province {
-            fill: var(--brand-color);
+            /* ใช้การไล่สี Gradient ที่เราสร้างไว้ใน SVG */
+            fill: url(#goldGradient);
             stroke: #ffffff;
             stroke-width: 0.8px;
-            transition: fill 0.2s ease;
+            transition: opacity 0.2s ease, stroke-width 0.2s ease, fill 0.2s ease;
             cursor: pointer;
         }
 
         .province:hover {
-            fill: var(--brand-hover);
+            opacity: 0.85; /* ตอนเอาเมาส์ชี้ให้โปร่งแสงนิดนึงเพื่อให้ดูมีมิติ */
         }
 
         .province.active {
-            fill: var(--brand-hover);
+            fill: #FFD700; /* สีทองสว่างตอนกดเลือก */
             stroke: #1e293b;
             stroke-width: 1.5px;
+            opacity: 1;
         }
 
         .province-label {
@@ -399,6 +403,28 @@
             .attr("width", width)
             .attr("height", height);
 
+        // --- เพิ่มระบบสร้างสี Gradient สีทอง ---
+        const defs = svg.append("defs");
+        const gradient = defs.append("linearGradient")
+            .attr("id", "goldGradient")
+            .attr("x1", "0%")
+            .attr("y1", "0%")
+            .attr("x2", "100%")
+            .attr("y2", "100%");
+            
+        gradient.append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", "#F9F295"); // ทองอ่อน
+            
+        gradient.append("stop")
+            .attr("offset", "50%")
+            .attr("stop-color", "#E0AA3E"); // ทองกลาง
+
+        gradient.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", "#B8860B"); // ทองเข้ม
+        // ------------------------------------
+
         const g = svg.append("g");
 
         const zoom = d3.zoom()
@@ -533,9 +559,9 @@
                 .text(d => getProvName(d));
 
             // ---------------------------------------------------------
-            // ขยับตัวเลข 814 ขึ้นอีกนิด (ปรับค่าแกน Y จาก 9.2 เป็น 10.2)
+            // ขยับตัวเลข 814 ขวาขึ้นอีกนิด (ปรับค่า Longitude แกน X จาก 101.5 เป็น 102.8)
             // ---------------------------------------------------------
-            statsPosition = projection([101.5, 10.2]); 
+            statsPosition = projection([102.8, 10.2]); 
             
             const totalStores = window.storeData ? window.storeData.length : 814;
             
@@ -543,10 +569,11 @@
                 .attr("class", "map-stats-group")
                 .attr("transform", `translate(${statsPosition[0]}, ${statsPosition[1]})`);
 
+            // เปลี่ยนสีข้อความเป็น var(--stat-color) หรือสีแดง
             statsGroup.append("text")
                 .attr("text-anchor", "middle")
                 .attr("y", -30)
-                .style("fill", "var(--brand-color)")
+                .style("fill", "var(--stat-color)") 
                 .style("font-size", "14px")
                 .style("font-weight", "600")
                 .style("pointer-events", "none")
@@ -555,7 +582,7 @@
             statsGroup.append("text")
                 .attr("text-anchor", "middle")
                 .attr("y", 15)
-                .style("fill", "var(--brand-color)")
+                .style("fill", "var(--stat-color)") 
                 .style("font-size", "52px")
                 .style("font-weight", "700")
                 .style("pointer-events", "none")
@@ -564,7 +591,7 @@
             statsGroup.append("text")
                 .attr("text-anchor", "middle")
                 .attr("y", 40)
-                .style("fill", "var(--brand-color)")
+                .style("fill", "var(--stat-color)") 
                 .style("font-size", "16px")
                 .style("font-weight", "600")
                 .style("pointer-events", "none")
