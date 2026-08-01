@@ -12,10 +12,9 @@
 
     <style>
         :root {
-            /* ปรับสีหลักให้เข้ากับโทนทอง/แดง */
-            --brand-color: #E0AA3E; 
-            --brand-hover: #F9F295; 
-            --stat-color: #d32f2f; /* สีแดงสำหรับตัวเลข */
+            --brand-color: #ffcc00; 
+            --brand-hover: #FFD700; 
+            --stat-color: #FF0000; /* แดงสดตามที่ต้องการ */
             --map-bg: #f8fafc;
             --text-dark: #1e293b;
         }
@@ -138,20 +137,19 @@
         }
 
         .province {
-            /* ใช้การไล่สี Gradient ที่เราสร้างไว้ใน SVG */
-            fill: url(#goldGradient);
-            stroke: #ffffff;
-            stroke-width: 0.8px;
+            fill: url(#mapGradient);
+            stroke: rgba(255, 255, 255, 0.35); /* ทำให้เส้นขอบบางและโปร่งแสง เพื่อให้แผนที่ดูเป็นผืนเดียวกัน */
+            stroke-width: 0.6px;
             transition: opacity 0.2s ease, stroke-width 0.2s ease, fill 0.2s ease;
             cursor: pointer;
         }
 
         .province:hover {
-            opacity: 0.85; /* ตอนเอาเมาส์ชี้ให้โปร่งแสงนิดนึงเพื่อให้ดูมีมิติ */
+            opacity: 0.8;
         }
 
         .province.active {
-            fill: #FFD700; /* สีทองสว่างตอนกดเลือก */
+            fill: #FFEA00; /* สีสว่างขึ้นเวลากดเลือก */
             stroke: #1e293b;
             stroke-width: 1.5px;
             opacity: 1;
@@ -403,28 +401,6 @@
             .attr("width", width)
             .attr("height", height);
 
-        // --- เพิ่มระบบสร้างสี Gradient สีทอง ---
-        const defs = svg.append("defs");
-        const gradient = defs.append("linearGradient")
-            .attr("id", "goldGradient")
-            .attr("x1", "0%")
-            .attr("y1", "0%")
-            .attr("x2", "100%")
-            .attr("y2", "100%");
-            
-        gradient.append("stop")
-            .attr("offset", "0%")
-            .attr("stop-color", "#F9F295"); // ทองอ่อน
-            
-        gradient.append("stop")
-            .attr("offset", "50%")
-            .attr("stop-color", "#E0AA3E"); // ทองกลาง
-
-        gradient.append("stop")
-            .attr("offset", "100%")
-            .attr("stop-color", "#B8860B"); // ทองเข้ม
-        // ------------------------------------
-
         const g = svg.append("g");
 
         const zoom = d3.zoom()
@@ -540,6 +516,31 @@
             geoJsonData = data;
             projection.fitExtent([[20, 70], [width - 20, height - 20]], data);
 
+            // --- คำนวณขอบเขตแผนที่ทั้งหมด เพื่อสร้าง Gradient แผ่นเดียวครอบคลุมทั้งประเทศ ---
+            const [[x0, y0], [x1, y1]] = path.bounds(data);
+
+            const defs = svg.append("defs");
+            const gradient = defs.append("linearGradient")
+                .attr("id", "mapGradient")
+                .attr("gradientUnits", "userSpaceOnUse") // สำคัญ: บังคับให้ Gradient ไม่แยกเป็นก้อนๆ แต่ครอบทั้งแกน SVG
+                .attr("x1", x0)
+                .attr("y1", y0)
+                .attr("x2", x1)
+                .attr("y2", y1); // ไล่สีจากเหนือ (y0) ลงใต้ (y1)
+                
+            gradient.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", "#FFEA00"); // เหลืองสด (โซนภาคเหนือ)
+                
+            gradient.append("stop")
+                .attr("offset", "40%")
+                .attr("stop-color", "#ffcc00"); // สีเหลืองทองตรงกลาง
+                
+            gradient.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", "#FF6600"); // ส้มสด (โซนภาคใต้)
+            // ----------------------------------------------------------------------
+
             g.selectAll("path")
                 .data(data.features)
                 .enter().append("path")
@@ -558,9 +559,7 @@
                 .attr("dy", ".35em")
                 .text(d => getProvName(d));
 
-            // ---------------------------------------------------------
             // ขยับตัวเลข 814 ขวาขึ้นอีกนิด (ปรับค่า Longitude แกน X จาก 101.5 เป็น 102.8)
-            // ---------------------------------------------------------
             statsPosition = projection([102.8, 10.2]); 
             
             const totalStores = window.storeData ? window.storeData.length : 814;
@@ -569,7 +568,7 @@
                 .attr("class", "map-stats-group")
                 .attr("transform", `translate(${statsPosition[0]}, ${statsPosition[1]})`);
 
-            // เปลี่ยนสีข้อความเป็น var(--stat-color) หรือสีแดง
+            // เปลี่ยนสีข้อความเป็น var(--stat-color) คือแดงสด
             statsGroup.append("text")
                 .attr("text-anchor", "middle")
                 .attr("y", -30)
