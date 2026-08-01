@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TAP - Store Locator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     
     <!-- โหลดข้อมูลร้านค้าเพียงครั้งเดียว -->
@@ -394,6 +394,7 @@
         let width = window.innerWidth;
         let height = window.innerHeight;
         let geoJsonData = null;
+        let statsPosition = null; // เก็บพิกัดของข้อความสถิติ
 
         const svg = d3.select("#thailand-map")
             .attr("width", width)
@@ -407,6 +408,13 @@
                 g.attr("transform", event.transform);
                 const scale = event.transform.k;
                 g.selectAll(".province-label").style("font-size", Math.max(2, 9 / scale) + "px");
+                
+                // ถ้าย่อขยายจอ ให้ตัวเลขสถิติหดลงบ้าง เพื่อไม่ให้ล้นจอ
+                if (statsPosition) {
+                    g.selectAll(".map-stats-group").attr("transform", 
+                        `translate(${statsPosition[0]}, ${statsPosition[1]}) scale(${1 / Math.sqrt(scale)})`
+                    );
+                }
             });
 
         svg.call(zoom);
@@ -452,7 +460,7 @@
                 return prov.trim() === provinceName;
             });
 
-            // จัดเรียงตามเขต/อำเภอ (รองรับทั้ง key "อำเภอ" และ "อำเภอ/เขต")
+            // จัดเรียงตามเขต/อำเภอ
             storesInProvince.sort((a, b) => {
                 let distA = a['อำเภอ'] || a['อำเภอ/เขต'] || "";
                 let distB = b['อำเภอ'] || b['อำเภอ/เขต'] || "";
@@ -466,7 +474,6 @@
 
             storesInProvince.forEach(store => {
                 const storeName = store['ชื่อร้านค้า'] || "ไม่ระบุชื่อร้าน";
-                // แก้ไขตรงนี้ให้ดึงข้อมูลจาก "อำเภอ" หรือ "อำเภอ/เขต"
                 const district = store['อำเภอ'] || store['อำเภอ/เขต'] || "-";
                 
                 let phone = store['เบอร์โทรศัพท์'] || "";
@@ -514,7 +521,7 @@
                 .attr("d", path)
                 .on("click", (event, d) => zoomToFeature(d));
 
-            g.selectAll("text")
+            g.selectAll("text.province-label")
                 .data(data.features)
                 .enter().append("text")
                 .attr("class", "province-label")
@@ -524,6 +531,46 @@
                 })
                 .attr("dy", ".35em")
                 .text(d => getProvName(d));
+
+            // ---------------------------------------------------------
+            // สร้างข้อความ "ตัวแทนจำหน่าย 814 แห่งทั่วประเทศ" ฝังในแผนที่
+            // ---------------------------------------------------------
+            statsPosition = projection([101.8, 11.5]); // พิกัดอ่าวไทย
+            
+            // นับสาขาจาก stores.js ถ้าไม่มีให้ใช้ค่าเริ่มต้น 814
+            const totalStores = window.storeData ? window.storeData.length : 814;
+            
+            const statsGroup = g.append("g")
+                .attr("class", "map-stats-group")
+                .attr("transform", `translate(${statsPosition[0]}, ${statsPosition[1]})`);
+
+            statsGroup.append("text")
+                .attr("text-anchor", "middle")
+                .attr("y", -30)
+                .style("fill", "var(--brand-color)")
+                .style("font-size", "14px")
+                .style("font-weight", "600")
+                .style("pointer-events", "none")
+                .text("ตัวแทนจำหน่าย");
+
+            statsGroup.append("text")
+                .attr("text-anchor", "middle")
+                .attr("y", 15)
+                .style("fill", "var(--brand-color)")
+                .style("font-size", "52px")
+                .style("font-weight", "700")
+                .style("pointer-events", "none")
+                .text(totalStores); // ดึงจำนวนสาขามาโชว์
+
+            statsGroup.append("text")
+                .attr("text-anchor", "middle")
+                .attr("y", 40)
+                .style("fill", "var(--brand-color)")
+                .style("font-size", "16px")
+                .style("font-weight", "600")
+                .style("pointer-events", "none")
+                .text("แห่งทั่วประเทศ");
+            // ---------------------------------------------------------
 
             const datalist = document.getElementById("province-list");
             const sortedNames = data.features
