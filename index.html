@@ -14,7 +14,7 @@
         :root {
             --brand-color: #ffcc00; 
             --brand-hover: #FFD700; 
-            --stat-color: #FF0000; /* แดงสดตามที่ต้องการ */
+            --stat-color: #FF0000; 
             --map-bg: #f8fafc;
             --text-dark: #1e293b;
         }
@@ -50,21 +50,11 @@
             align-items: center;
         }
 
-        .header-logo {
-            font-size: 20px;
-            font-weight: 700;
-            color: #111111;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .header-logo span {
-            color: var(--brand-color);
-            background: #111;
-            padding: 2px 8px;
-            border-radius: 6px;
+        /* ปรับแต่งรูปภาพโลโก้ให้พอดีกับ Header */
+        .header-logo-img {
+            height: 32px; /* ขนาดความสูงของโลโก้ */
+            width: auto;
+            object-fit: contain;
         }
 
         .search-container {
@@ -138,7 +128,7 @@
 
         .province {
             fill: url(#mapGradient);
-            stroke: rgba(255, 255, 255, 0.35); /* ทำให้เส้นขอบบางและโปร่งแสง เพื่อให้แผนที่ดูเป็นผืนเดียวกัน */
+            stroke: rgba(255, 255, 255, 0.35); 
             stroke-width: 0.6px;
             transition: opacity 0.2s ease, stroke-width 0.2s ease, fill 0.2s ease;
             cursor: pointer;
@@ -149,7 +139,7 @@
         }
 
         .province.active {
-            fill: #FFEA00; /* สีสว่างขึ้นเวลากดเลือก */
+            fill: #FFEA00; 
             stroke: #1e293b;
             stroke-width: 1.5px;
             opacity: 1;
@@ -331,7 +321,8 @@
 <body>
 
     <div class="header">
-        <h1 class="header-logo"><span>TAP</span> Store Locator</h1>
+        <!-- เรียกใช้ไฟล์ Logo ของคุณตรงนี้ -->
+        <img src="Logo9zz.png" alt="T.A.Paint Trading Limited Logo" class="header-logo-img">
     </div>
 
     <button id="back-btn">← ย้อนกลับ</button>
@@ -516,30 +507,28 @@
             geoJsonData = data;
             projection.fitExtent([[20, 70], [width - 20, height - 20]], data);
 
-            // --- คำนวณขอบเขตแผนที่ทั้งหมด เพื่อสร้าง Gradient แผ่นเดียวครอบคลุมทั้งประเทศ ---
             const [[x0, y0], [x1, y1]] = path.bounds(data);
 
             const defs = svg.append("defs");
             const gradient = defs.append("linearGradient")
                 .attr("id", "mapGradient")
-                .attr("gradientUnits", "userSpaceOnUse") // สำคัญ: บังคับให้ Gradient ไม่แยกเป็นก้อนๆ แต่ครอบทั้งแกน SVG
+                .attr("gradientUnits", "userSpaceOnUse")
                 .attr("x1", x0)
                 .attr("y1", y0)
                 .attr("x2", x1)
-                .attr("y2", y1); // ไล่สีจากเหนือ (y0) ลงใต้ (y1)
+                .attr("y2", y1); 
                 
             gradient.append("stop")
                 .attr("offset", "0%")
-                .attr("stop-color", "#FFEA00"); // เหลืองสด (โซนภาคเหนือ)
+                .attr("stop-color", "#FFEA00"); 
                 
             gradient.append("stop")
                 .attr("offset", "40%")
-                .attr("stop-color", "#ffcc00"); // สีเหลืองทองตรงกลาง
+                .attr("stop-color", "#ffcc00"); 
                 
             gradient.append("stop")
                 .attr("offset", "100%")
-                .attr("stop-color", "#FF6600"); // ส้มสด (โซนภาคใต้)
-            // ----------------------------------------------------------------------
+                .attr("stop-color", "#FF6600"); 
 
             g.selectAll("path")
                 .data(data.features)
@@ -559,7 +548,6 @@
                 .attr("dy", ".35em")
                 .text(d => getProvName(d));
 
-            // ขยับตัวเลข 814 ขวาขึ้นอีกนิด (ปรับค่า Longitude แกน X จาก 101.5 เป็น 102.8)
             statsPosition = projection([102.8, 10.2]); 
             
             const totalStores = window.storeData ? window.storeData.length : 814;
@@ -568,7 +556,6 @@
                 .attr("class", "map-stats-group")
                 .attr("transform", `translate(${statsPosition[0]}, ${statsPosition[1]})`);
 
-            // เปลี่ยนสีข้อความเป็น var(--stat-color) คือแดงสด
             statsGroup.append("text")
                 .attr("text-anchor", "middle")
                 .attr("y", -30)
@@ -596,23 +583,18 @@
                 .style("pointer-events", "none")
                 .text("แห่งทั่วประเทศ");
 
-            // ---------------------------------------------------------
-            // จัดการระบบ Search
-            // ---------------------------------------------------------
             const datalist = document.getElementById("province-list");
             const sortedNames = data.features
                 .map(f => getProvName(f))
                 .filter((v, i, a) => v && a.indexOf(v) === i)
                 .sort((a, b) => a.localeCompare(b, 'th'));
 
-            // เติมภาษาไทย
             sortedNames.forEach(name => {
                 let option = document.createElement('option');
                 option.value = name;
                 datalist.appendChild(option);
             });
 
-            // เติมภาษาอังกฤษ (ซ่อน Bangkok Metropolis ไม่ให้รกหูรกตาตอนค้นหา)
             for (const [en, th] of Object.entries(enToThMap)) {
                 if (en === "Bangkok Metropolis") continue; 
                 
