@@ -507,55 +507,35 @@
             geoJsonData = data;
             projection.fitExtent([[20, 70], [width - 20, height - 20]], data);
 
-            // ... (โค้ดเดิมที่ใช้วาด province และ province-label) ...
+            g.selectAll("path")
+                .data(data.features)
+                .enter().append("path")
+                .attr("class", "province")
+                .attr("d", path)
+                .on("click", (event, d) => zoomToFeature(d));
 
-            // ---------------------------------------------------------
-            // โค้ดที่ต้องเพิ่ม: สร้างข้อความสถิติตรง "อ่าวไทย"
-            // ---------------------------------------------------------
-            
-            // ใช้ projection แปลงพิกัดเส้นรุ้ง/เส้นแวง (ลองจิจูด, ละติจูด) ของอ่าวไทยให้เป็นตำแหน่งพิกัด x, y บนจอ
-            // พิกัด 102.0, 10.5 คือบริเวณอ่าวไทย ซึ่งเป็นพื้นที่ว่างพอดี
-            const gulfOfThailandCoords = projection([102.0, 10.5]); 
-            
-            // ดึงจำนวนสาขาทั้งหมดจาก stores.js หรือถ้าไม่มีให้เป็น 0
-            const totalStores = window.storeData ? window.storeData.length : 814;
+            g.selectAll("text")
+                .data(data.features)
+                .enter().append("text")
+                .attr("class", "province-label")
+                .attr("transform", d => {
+                    const centroid = path.centroid(d);
+                    return isNaN(centroid[0]) ? "translate(-100,-100)" : `translate(${centroid})`;
+                })
+                .attr("dy", ".35em")
+                .text(d => getProvName(d));
 
-            const statsGroup = g.append("g")
-                .attr("class", "map-stats")
-                .attr("transform", `translate(${gulfOfThailandCoords[0]}, ${gulfOfThailandCoords[1]})`);
+            const datalist = document.getElementById("province-list");
+            const sortedNames = data.features
+                .map(f => getProvName(f))
+                .filter((v, i, a) => v && a.indexOf(v) === i)
+                .sort((a, b) => a.localeCompare(b, 'th'));
 
-            // ข้อความบรรทัดที่ 1
-            statsGroup.append("text")
-                .attr("y", -35)
-                .attr("text-anchor", "middle")
-                .style("fill", "#ffcc00")
-                .style("font-size", "14px")
-                .style("font-weight", "600")
-                .text("ตัวแทนจำหน่าย");
-
-            // ตัวเลขตรงกลาง
-            statsGroup.append("text")
-                .attr("y", 15)
-                .attr("text-anchor", "middle")
-                .style("fill", "#ffcc00")
-                .style("font-size", "52px")
-                .style("font-weight", "700")
-                .text(totalStores);
-
-            // ข้อความบรรทัดล่าง
-            statsGroup.append("text")
-                .attr("y", 45)
-                .attr("text-anchor", "middle")
-                .style("fill", "#ffcc00")
-                .style("font-size", "16px")
-                .style("font-weight", "600")
-                .text("แห่งทั่วประเทศ");
-            // ---------------------------------------------------------
-
-            // ... (โค้ด datalist และการจัดเรียงจังหวัดเดิม) ...
-        }).catch(err => {
-            console.error("โหลดข้อมูล GeoJSON แผนที่ล้มเหลว", err);
-        
+            sortedNames.forEach(name => {
+                let option = document.createElement('option');
+                option.value = name;
+                datalist.appendChild(option);
+            });
         }).catch(err => {
             console.error("โหลดข้อมูล GeoJSON แผนที่ล้มเหลว ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต", err);
         });
